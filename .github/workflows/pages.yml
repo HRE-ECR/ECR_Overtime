@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Required for GitHub Pages deploy from Actions
 permissions:
   contents: read
   pages: write
@@ -26,7 +27,7 @@ jobs:
         with:
           node-version: 20
 
-      # Fail fast if secrets are missing (prevents blank Supabase URL builds)
+      # FAIL FAST: stop immediately if secrets are missing/blank
       - name: Verify Supabase secrets
         run: |
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then echo "Missing secret: VITE_SUPABASE_URL"; exit 1; fi
@@ -35,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # Pass env vars directly into the build so Vite bakes them in
+      # Inject env vars directly into the build (most reliable for Vite builds in CI)
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
