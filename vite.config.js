@@ -11,7 +11,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
+
+      // These are files in /public that you want copied/available
+      includeAssets: [
+        'favicon.ico',
+        'icons/icon-192.png',
+        'icons/icon-512.png',
+        'icons/maskable-512.png'
+      ],
+
       manifest: {
         name: 'OvertimeHub',
         short_name: 'OvertimeHub',
@@ -25,7 +33,8 @@ export default defineConfig({
         scope: '/ECR_Overtime/',
 
         orientation: 'portrait',
-        // IMPORTANT: Use relative icon paths so they resolve under /ECR_Overtime/
+
+        // Use relative icon paths so they resolve under /ECR_Overtime/
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -36,9 +45,12 @@ export default defineConfig({
       workbox: {
         // SPA fallback must include the repo base path for Pages
         navigateFallback: '/ECR_Overtime/index.html',
+
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+
         runtimeCaching: [
           {
+            // IMPORTANT: this must be => (not =&gt;)
             urlPattern: ({ url }) => url.origin.includes('supabase.co'),
             handler: 'NetworkFirst',
             options: {
