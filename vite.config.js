@@ -3,9 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  // GitHub Pages project site lives under /ECR_Overtime/
   base: '/ECR_Overtime/',
-
   plugins: [
     react(),
     VitePWA({

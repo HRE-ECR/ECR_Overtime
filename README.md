@@ -1,15 +1,27 @@
-# OvertimeHub (PWA)
+# ECR_Overtime (OvertimeHub) – GitHub Pages build
 
-A mobile-first Progressive Web App for workplace overtime management.
+Deploys as a GitHub Pages **project site**:
+- https://hre-ecr.github.io/ECR_Overtime/
 
-## Features
-- **Shift Post (Manager/Admin):** Post overtime slots (date, time, spots, department).
-- **Availability Polling:** Employees respond with **Available / Backup / Unavailable**.
-- **Smart Allocation:** Manager confirms users for shifts.
-- **Transparency Log:** Employees see confirmed shifts in **My Shifts**.
-- **PWA Ready:** Installable, offline-friendly, standalone display.
+## Supabase Auth URLs
+Supabase → Authentication → URL Configuration:
+- Site URL: https://hre-ecr.github.io/ECR_Overtime
+- Redirect URLs:
+  - https://hre-ecr.github.io/ECR_Overtime
+  - https://hre-ecr.github.io/ECR_Overtime/*
 
-## Tech
-- React + Tailwind CSS
-- Vite + `vite-plugin-pwa`
-- Supabase Auth + Postgres
+## GitHub Secrets
+Repo → Settings → Secrets and variables → Actions:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+
+## Manager features
+Managers can:
+- Create shift posts
+- Confirm responders
+- Cancel confirmations
+- Delete shift posts
+
+## Password onboarding
+After first OTP login, users are prompted to set a permanent password.
+Magic Link remains available as a fallback.
