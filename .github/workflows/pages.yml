@@ -21,20 +21,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # FIX: Removed npm cache, because caching requires a lockfile.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
 
-      # ✅ ADD IT RIGHT HERE
+      # Your env vars for Vite build (from GitHub Secrets)
       - name: Create .env for build
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
 
-      - name: Install deps
-        run: npm ci
+      # FIX: Use npm install (npm ci requires package-lock.json)
+      - name: Install dependencies
+        run: npm install
 
       - name: Build
         run: npm run build
