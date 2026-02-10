@@ -1,0 +1,87 @@
+import React, { useEffect, useMemo, useState } from 'react'
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
+}
+
+function isStandalone() {
+  // iOS
+  // eslint-disable-next-line no-undef
+  const iosStandalone = window.navigator.standalone === true
+  const displayModeStandalone = window.matchMedia('(display-mode: standalone)').matches
+  return iosStandalone || displayModeStandalone
+}
+
+function isMobile() {
+  return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent)
+}
+
+export default function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [dismissed, setDismissed] = useState(false)
+
+  const show = useMemo(() => {
+    if (dismissed) return false
+    if (!isMobile()) return false
+    if (isStandalone()) return false
+    return true
+  }, [dismissed])
+
+  useEffect(() => {
+    const onBeforeInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+  }, [])
+
+  if (!show) return null
+
+  const primaryText = deferredPrompt ? 'Add to Home Screen' : (isIOS() ? 'Install on iPhone/iPad' : 'Install')
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const choice = await deferredPrompt.userChoice
+      // Reset prompt; Chrome will only allow one prompt per event.
+      setDeferredPrompt(null)
+      if (choice?.outcome !== 'accepted') {
+        setDismissed(true)
+      }
+    } else {
+      // iOS fallback: show instructions
+      alert('On iOS: tap the Share button, then “Add to Home Screen”.')
+    }
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 mt-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-card flex items-start gap-3">
+        <div className="h-10 w-10 rounded-2xl bg-navy-800 grid place-items-center">
+          <span className="text-white font-black">+</span>
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-white">Install OvertimeHub</div>
+          <div className="text-sm text-slate-200 mt-1">
+            Get a fast, app-like experience with offline access and no browser bars.
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleInstall}
+              className="px-4 py-2 rounded-xl bg-white text-navy-900 font-extrabold active:scale-[0.99]"
+            >
+              {primaryText}
+            </button>
+            <button
+              onClick={() => setDismissed(true)}
+              className="px-4 py-2 rounded-xl bg-slate-800/70 text-slate-100 font-semibold"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
