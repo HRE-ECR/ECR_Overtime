@@ -26,61 +26,49 @@ jobs:
         with:
           node-version: 20
 
-      # FAIL FAST: secrets present (but do not print values)
       - name: Verify Supabase secrets exist
         run: |
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then echo "Missing secret: VITE_SUPABASE_URL"; exit 1; fi
           if [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then echo "Missing secret: VITE_SUPABASE_ANON_KEY"; exit 1; fi
 
-      # FAIL FAST: secrets look valid (format checks only, no leaking)
       - name: Validate Supabase secrets (safe)
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          # URL must start with http(s)
           case "$VITE_SUPABASE_URL" in
             https://*|http://*) ;;
-            *) echo "VITE_SUPABASE_URL must start with http:// or https:// (check for leading/trailing spaces)"; exit 1;;
+            *) echo "VITE_SUPABASE_URL must start with http:// or https:// (check for spaces)"; exit 1;;
           esac
-
-          # Catch double https://
           if echo "$VITE_SUPABASE_URL" | grep -q "https://https://"; then
             echo "VITE_SUPABASE_URL has double https://"; exit 1
           fi
-
-          # Catch leading/trailing spaces safely (no value printed)
           if [ "$VITE_SUPABASE_URL" != "$(echo "$VITE_SUPABASE_URL" | xargs)" ]; then
             echo "VITE_SUPABASE_URL has leading/trailing spaces"; exit 1
           fi
-
-          # Basic anon key sanity: should look like JWT (3 dot-separated parts)
           if ! echo "$VITE_SUPABASE_ANON_KEY" | grep -qE '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'; then
             echo "VITE_SUPABASE_ANON_KEY does not look like a JWT (check for spaces/newlines)"; exit 1
           fi
-
           echo "Secrets validation passed."
 
-      # FAIL FAST: prevent broken index.html being deployed
       - name: Fail fast if index.html is escaped/broken
         run: |
           if grep -q "&lt;" index.html; then
-            echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >)."
-            exit 1
+            echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >).";
+            exit 1;
           fi
           if grep -q "^+" index.html; then
-            echo "index.html contains patch markers (+). Remove them and paste clean HTML."
-            exit 1
+            echo "index.html contains patch markers (+). Remove them.";
+            exit 1;
           fi
           if grep -q "diff --git" index.html; then
-            echo "index.html contains a git diff. Replace with the actual HTML file contents."
-            exit 1
+            echo "index.html contains a git diff. Replace with actual HTML.";
+            exit 1;
           fi
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # Inject env vars directly into the build (Vite reads VITE_* at build time)
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
