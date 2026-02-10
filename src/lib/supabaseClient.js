@@ -3,9 +3,24 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  // eslint-disable-next-line no-console
-  console.warn('Missing Supabase env vars. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env')
+function isValidHttpUrl(value) {
+  try {
+    const u = new URL(value)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+// Export a nullable client so the app doesn't hard-crash on Pages if env is wrong.
+export const supabase =
+  isValidHttpUrl(supabaseUrl) && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null
+
+export const supabaseConfigError =
+  !isValidHttpUrl(supabaseUrl)
+    ? `Invalid VITE_SUPABASE_URL: "${supabaseUrl || '(empty)'}"`
+    : !supabaseAnonKey
+      ? 'Missing VITE_SUPABASE_ANON_KEY'
+      : ''
