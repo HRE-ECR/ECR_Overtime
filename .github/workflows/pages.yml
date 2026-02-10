@@ -26,32 +26,29 @@ jobs:
         with:
           node-version: 20
 
-      # FAIL FAST: stop immediately if secrets are missing/blank
       - name: Verify Supabase secrets
         run: |
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then echo "Missing secret: VITE_SUPABASE_URL"; exit 1; fi
           if [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then echo "Missing secret: VITE_SUPABASE_ANON_KEY"; exit 1; fi
 
-      # FAIL FAST: stop immediately if index.html has been pasted with HTML entities or patch markers
       - name: Fail fast if index.html is escaped/broken
         run: |
           if grep -q "&lt;" index.html; then
-            echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >)."
-            exit 1
+            echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >).";
+            exit 1;
           fi
           if grep -q "^+" index.html; then
-            echo "index.html contains patch markers (+). Remove them and paste clean HTML."
-            exit 1
+            echo "index.html contains patch markers (+). Remove them and paste clean HTML.";
+            exit 1;
           fi
           if grep -q "diff --git" index.html; then
-            echo "index.html contains a git diff. Replace with the actual HTML file contents."
-            exit 1
+            echo "index.html contains a git diff. Replace with the actual HTML file contents.";
+            exit 1;
           fi
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # Inject env vars directly into the build (most reliable for Vite builds in CI)
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
