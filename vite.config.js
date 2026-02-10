@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // GitHub Pages project site base path (repo name)
+  // https://<username>.github.io/ECR_Overtime/
+  base: '/ECR_Overtime/',
+
   plugins: [
     react(),
     VitePWA({
@@ -15,8 +19,11 @@ export default defineConfig({
         theme_color: '#0B1F3B',
         background_color: '#0B1F3B',
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+
+        // These should match the GitHub Pages subpath for correct install/launch
+        start_url: '/ECR_Overtime/',
+        scope: '/ECR_Overtime/',
+
         orientation: 'portrait',
         icons: [
           {
@@ -38,7 +45,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        navigateFallback: '/index.html',
+        // SPA fallback should include the repo base path on GitHub Pages
+        navigateFallback: '/ECR_Overtime/index.html',
+
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         runtimeCaching: [
           {
