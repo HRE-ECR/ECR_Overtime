@@ -21,7 +21,6 @@ export const supabaseConfigError =
       ? 'Missing VITE_SUPABASE_ANON_KEY'
       : ''
 
-// A safe stub so code never crashes with `supabase === null`
 function createStub() {
   const unsub = () => {}
   return {
@@ -30,20 +29,19 @@ function createStub() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: unsub } } }),
       getUser: async () => ({ data: { user: null }, error: null }),
       signInWithOtp: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      signInWithPassword: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      updateUser: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       signOut: async () => ({ error: null })
     },
-    // Basic stubs so accidental calls don't hard-crash
     from: () => ({
       select: () => ({ eq: () => ({ single: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }) }),
       insert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       upsert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      update: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       delete: () => ({ eq: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }),
       order: () => ({})
     })
   }
 }
 
-// If configured: real client. If not: stub (prevents `supabase.auth` crash)
-export const supabase = isSupabaseReady
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createStub()
+export const supabase = isSupabaseReady ? createClient(supabaseUrl, supabaseAnonKey) : createStub()

@@ -2,11 +2,5 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-}
-
-/* iOS safe-area */
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
+:root { color-scheme: dark; }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

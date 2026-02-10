@@ -1,19 +1,15 @@
--- OvertimeHub Supabase Schema
--- Run this in Supabase SQL Editor.
-
 create extension if not exists "pgcrypto";
 
--- 1) Profiles table: ties auth.users to business metadata
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
   role text not null default 'employee' check (role in ('employee', 'manager')),
   department text,
+  has_password boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
--- Keep updated_at fresh
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -27,12 +23,11 @@ create trigger trg_profiles_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
 
--- Auto-create profile on user signup
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles(id, full_name, role)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email), 'employee')
+  insert into public.profiles(id, full_name, role, has_password)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email), 'employee', false)
   on conflict (id) do nothing;
   return new;
 end;
@@ -43,7 +38,6 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
--- 2) Shifts: manager posts overtime slots
 create table if not exists public.shifts (
   id uuid primary key default gen_random_uuid(),
   shift_date date not null,
@@ -58,7 +52,6 @@ create table if not exists public.shifts (
 
 create index if not exists idx_shifts_date on public.shifts(shift_date);
 
--- 3) Responses: users set availability per shift
 create table if not exists public.shift_responses (
   id uuid primary key default gen_random_uuid(),
   shift_id uuid not null references public.shifts(id) on delete cascade,
@@ -73,9 +66,6 @@ create trigger trg_shift_responses_updated_at
 before update on public.shift_responses
 for each row execute function public.set_updated_at();
 
-create index if not exists idx_shift_responses_shift on public.shift_responses(shift_id);
-
--- 4) Confirmations: manager confirms allocation(s)
 create table if not exists public.shift_confirmations (
   id uuid primary key default gen_random_uuid(),
   shift_id uuid not null references public.shifts(id) on delete cascade,
@@ -85,21 +75,33 @@ create table if not exists public.shift_confirmations (
   unique (shift_id, user_id)
 );
 
-create index if not exists idx_shift_confirmations_shift on public.shift_confirmations(shift_id);
+-- Add explicit FKs to profiles so PostgREST can join shift_responses/shift_confirmations -> profiles
+-- (Avoids: "Could not find a relationship between 'shift_responses' and 'profiles'")
 
--- ===== Row Level Security (RLS) =====
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'shift_responses_user_id_profiles_fkey') then
+    alter table public.shift_responses
+      add constraint shift_responses_user_id_profiles_fkey
+      foreign key (user_id) references public.profiles(id) on delete cascade;
+  end if;
+
+  if not exists (select 1 from pg_constraint where conname = 'shift_confirmations_user_id_profiles_fkey') then
+    alter table public.shift_confirmations
+      add constraint shift_confirmations_user_id_profiles_fkey
+      foreign key (user_id) references public.profiles(id) on delete cascade;
+  end if;
+end;
+$$;
+
 alter table public.profiles enable row level security;
 alter table public.shifts enable row level security;
 alter table public.shift_responses enable row level security;
 alter table public.shift_confirmations enable row level security;
 
--- Helper: is_manager
 create or replace function public.is_manager(uid uuid)
 returns boolean as $$
-  select exists(
-    select 1 from public.profiles p
-    where p.id = uid and p.role = 'manager'
-  );
+  select exists(select 1 from public.profiles p where p.id = uid and p.role = 'manager');
 $$ language sql stable;
 
 -- Profiles policies
@@ -107,6 +109,10 @@ $$ language sql stable;
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
 for select using (auth.uid() = id);
+
+drop policy if exists "profiles_select_manager_all" on public.profiles;
+create policy "profiles_select_manager_all" on public.profiles
+for select using (public.is_manager(auth.uid()));
 
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own" on public.profiles
@@ -122,10 +128,6 @@ drop policy if exists "shifts_insert_manager" on public.shifts;
 create policy "shifts_insert_manager" on public.shifts
 for insert with check (public.is_manager(auth.uid()));
 
-drop policy if exists "shifts_update_manager" on public.shifts;
-create policy "shifts_update_manager" on public.shifts
-for update using (public.is_manager(auth.uid()));
-
 drop policy if exists "shifts_delete_manager" on public.shifts;
 create policy "shifts_delete_manager" on public.shifts
 for delete using (public.is_manager(auth.uid()));
@@ -135,6 +137,10 @@ for delete using (public.is_manager(auth.uid()));
 drop policy if exists "responses_select_own" on public.shift_responses;
 create policy "responses_select_own" on public.shift_responses
 for select using (auth.uid() = user_id);
+
+drop policy if exists "responses_select_manager" on public.shift_responses;
+create policy "responses_select_manager" on public.shift_responses
+for select using (public.is_manager(auth.uid()));
 
 drop policy if exists "responses_upsert_own" on public.shift_responses;
 create policy "responses_upsert_own" on public.shift_responses

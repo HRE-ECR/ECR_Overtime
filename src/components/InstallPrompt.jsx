@@ -5,8 +5,6 @@ function isIOS() {
 }
 
 function isStandalone() {
-  // iOS
-  // eslint-disable-next-line no-undef
   const iosStandalone = window.navigator.standalone === true
   const displayModeStandalone = window.matchMedia('(display-mode: standalone)').matches
   return iosStandalone || displayModeStandalone
@@ -43,14 +41,9 @@ export default function InstallPrompt() {
   const handleInstall = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt()
-      const choice = await deferredPrompt.userChoice
-      // Reset prompt; Chrome will only allow one prompt per event.
+      await deferredPrompt.userChoice
       setDeferredPrompt(null)
-      if (choice?.outcome !== 'accepted') {
-        setDismissed(true)
-      }
     } else {
-      // iOS fallback: show instructions
       alert('On iOS: tap the Share button, then “Add to Home Screen”.')
     }
   }
@@ -58,27 +51,13 @@ export default function InstallPrompt() {
   return (
     <div className="max-w-3xl mx-auto px-4 mt-4">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-card flex items-start gap-3">
-        <div className="h-10 w-10 rounded-2xl bg-navy-800 grid place-items-center">
-          <span className="text-white font-black">+</span>
-        </div>
+        <div className="h-10 w-10 rounded-2xl bg-navy-800 grid place-items-center"><span className="text-white font-black">+</span></div>
         <div className="flex-1">
           <div className="font-bold text-white">Install OvertimeHub</div>
-          <div className="text-sm text-slate-200 mt-1">
-            Get a fast, app-like experience with offline access and no browser bars.
-          </div>
+          <div className="text-sm text-slate-200 mt-1">Get a fast, app-like experience with offline access and no browser bars.</div>
           <div className="mt-3 flex gap-2">
-            <button
-              onClick={handleInstall}
-              className="px-4 py-2 rounded-xl bg-white text-navy-900 font-extrabold active:scale-[0.99]"
-            >
-              {primaryText}
-            </button>
-            <button
-              onClick={() => setDismissed(true)}
-              className="px-4 py-2 rounded-xl bg-slate-800/70 text-slate-100 font-semibold"
-            >
-              Not now
-            </button>
+            <button onClick={handleInstall} className="px-4 py-2 rounded-xl bg-white text-navy-900 font-extrabold">{primaryText}</button>
+            <button onClick={() => setDismissed(true)} className="px-4 py-2 rounded-xl bg-slate-800/70 text-slate-100 font-semibold">Not now</button>
           </div>
         </div>
       </div>
