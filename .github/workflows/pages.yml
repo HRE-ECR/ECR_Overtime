@@ -27,6 +27,12 @@ jobs:
           node-version: 20
           cache: "npm"
 
+      # ✅ ADD IT RIGHT HERE
+      - name: Create .env for build
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
       - name: Install deps
         run: npm ci
 
