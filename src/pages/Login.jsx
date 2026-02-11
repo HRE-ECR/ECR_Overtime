@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, isSupabaseReady, supabaseConfigError } from '../lib/supabaseClient'
 
@@ -11,12 +11,10 @@ export default function Login() {
   const signIn = async (e) => {
     e.preventDefault()
     setMessage('')
-
     if (!isSupabaseReady) {
       setMessage(supabaseConfigError || 'Supabase is not configured.')
       return
     }
-
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setMessage(error.message)
@@ -31,28 +29,14 @@ export default function Login() {
 
         <form onSubmit={signIn} className="mt-6 grid gap-3">
           <label className="text-sm font-bold text-slate-200">Email</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-            placeholder="name@company.com"
-            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-white/20"
-            autoComplete="email"
-          />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required
+            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-white/20" />
 
           <label className="text-sm font-bold text-slate-200">Password</label>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-            placeholder="Your password"
-            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-white/20"
-            autoComplete="current-password"
-          />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required
+            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-white/20" />
 
-          <button disabled={loading} className="mt-2 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold active:scale-[0.99] disabled:opacity-60">
+          <button disabled={loading} className="mt-2 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

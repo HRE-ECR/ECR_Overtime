@@ -1,29 +1,18 @@
-# OvertimeHub – Approval-gated account flow (Email + Password)
+# OvertimeHub v3.1
 
-## What changed
-- Users self-signup with **email + password**.
-- After login, users see **Awaiting Admin Approval** until a manager sets their profile role.
-- Managers approve users in the **Admin Panel**.
-- Password reset is available.
+## Changes
+- Users can now cancel **approved** OT requests (status becomes cancelled).
+- Added **Shift History Log** for managers (audit_log).
+- Fixed OT counts by using an `ot_shift_counts` table updated by triggers.
 
-## GitHub Pages URL
-https://hre-ecr.github.io/ECR_Overtime/
+## Deploy
+GitHub Pages: https://hre-ecr.github.io/ECR_Overtime/
 
-## Supabase Auth URL Configuration
-Set:
+## Supabase
+Run `supabase/schema.sql` in SQL Editor.
+
+Auth URLs:
 - Site URL: https://hre-ecr.github.io/ECR_Overtime
 - Redirect URLs:
-  - https://hre-ecr.github.io/ECR_Overtime
   - https://hre-ecr.github.io/ECR_Overtime/*
-  - https://hre-ecr.github.io/ECR_Overtime/reset-password
-  - https://hre-ecr.github.io/ECR_Overtime/reset-password/*
-
-## Note on Email Rate Limits
-Supabase built-in email provider has strict rate limits. For production, set up Custom SMTP.
-
-## Setup
-1) Run `supabase/schema.sql` in Supabase SQL Editor.
-2) Set GitHub secrets:
-   - VITE_SUPABASE_URL
-   - VITE_SUPABASE_ANON_KEY
-3) Deploy to GitHub Pages via Actions.
+  - https://hre-ecr.github.io/ECR_Overtime/reset-password*

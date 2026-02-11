@@ -25,20 +25,9 @@ export default function Register() {
     }
 
     setLoading(true)
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: redirectTo }
-    })
-
-    if (error) {
-      setMessage(error.message)
-    } else {
-      // If email confirmations are enabled, session may be null.
-      setMessage('Account created. You can now sign in. If email confirmation is enabled, check your inbox.')
-    }
-
+    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } })
+    if (error) setMessage(error.message)
+    else setMessage('Account created. You can now sign in (approval required).')
     setLoading(false)
   }
 
@@ -66,9 +55,7 @@ export default function Register() {
           <div className="mt-4 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{message}</div>
         ) : null}
 
-        <div className="mt-5 text-sm">
-          <Link to="/" className="text-slate-200 underline">Back to sign in</Link>
-        </div>
+        <div className="mt-5 text-sm"><Link to="/" className="text-slate-200 underline">Back to sign in</Link></div>
       </div>
     </div>
   )

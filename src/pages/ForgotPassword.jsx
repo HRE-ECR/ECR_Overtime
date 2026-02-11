@@ -7,10 +7,7 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const redirectTo = useMemo(
-    () => `${window.location.origin}${import.meta.env.BASE_URL}reset-password`,
-    []
-  )
+  const redirectTo = useMemo(() => `${window.location.origin}${import.meta.env.BASE_URL}reset-password`, [])
 
   const send = async (e) => {
     e.preventDefault()
@@ -22,11 +19,9 @@ export default function ForgotPassword() {
     }
 
     setLoading(true)
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
     if (error) setMessage(error.message)
     else setMessage('Password reset email sent. Check your inbox.')
-
     setLoading(false)
   }
 
@@ -50,9 +45,7 @@ export default function ForgotPassword() {
           <div className="mt-4 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{message}</div>
         ) : null}
 
-        <div className="mt-5 text-sm">
-          <Link to="/" className="text-slate-200 underline">Back to sign in</Link>
-        </div>
+        <div className="mt-5 text-sm"><Link to="/" className="text-slate-200 underline">Back to sign in</Link></div>
       </div>
     </div>
   )

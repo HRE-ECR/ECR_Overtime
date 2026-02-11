@@ -21,27 +21,4 @@ export const supabaseConfigError =
       ? 'Missing VITE_SUPABASE_ANON_KEY'
       : ''
 
-function createStub() {
-  const unsub = () => {}
-  return {
-    auth: {
-      getSession: async () => ({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: unsub } } }),
-      getUser: async () => ({ data: { user: null }, error: null }),
-      signInWithPassword: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      signUp: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      resetPasswordForEmail: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      updateUser: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      signOut: async () => ({ error: null })
-    },
-    from: () => ({
-      select: () => ({ eq: () => ({ single: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }) }),
-      update: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      insert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      delete: () => ({ eq: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }),
-      order: () => ({})
-    })
-  }
-}
-
-export const supabase = isSupabaseReady ? createClient(supabaseUrl, supabaseAnonKey) : createStub()
+export const supabase = isSupabaseReady ? createClient(supabaseUrl, supabaseAnonKey) : null

@@ -11,7 +11,6 @@ function isMobile() { return /android|iphone|ipad|ipod/i.test(window.navigator.u
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [dismissed, setDismissed] = useState(false)
-
   const show = useMemo(() => !dismissed && isMobile() && !isStandalone(), [dismissed])
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function InstallPrompt() {
   }, [])
 
   if (!show) return null
-
   const primaryText = deferredPrompt ? 'Add to Home Screen' : (isIOS() ? 'Install on iPhone/iPad' : 'Install')
 
   const handleInstall = async () => {
@@ -35,7 +33,7 @@ export default function InstallPrompt() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 mt-4">
+    <div className="max-w-4xl mx-auto px-4 mt-4">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-card flex items-start gap-3">
         <div className="h-10 w-10 rounded-2xl bg-navy-800 grid place-items-center"><span className="text-white font-black">+</span></div>
         <div className="flex-1">
