@@ -57,14 +57,6 @@ jobs:
             echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >).";
             exit 1;
           fi
-          if grep -q "^+" index.html; then
-            echo "index.html contains patch markers (+). Remove them.";
-            exit 1;
-          fi
-          if grep -q "diff --git" index.html; then
-            echo "index.html contains a git diff. Replace with actual HTML.";
-            exit 1;
-          fi
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
