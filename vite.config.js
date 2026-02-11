@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'OvertimeHub',
         short_name: 'OvertimeHub',
-        description: 'Workplace overtime management – post availability and approve overtime.',
+        description: 'Workplace overtime management – shifts, requests, approvals, reporting.',
         theme_color: '#0B1F3B',
         background_color: '#0B1F3B',
         display: 'standalone',

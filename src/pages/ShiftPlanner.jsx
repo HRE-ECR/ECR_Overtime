@@ -32,7 +32,8 @@ export default function ShiftPlanner() {
         start_time: '06:00',
         end_time: isSun ? '16:00' : '15:00',
         spots_available: Number(daySlots),
-        department
+        department,
+        shift_status: 'active'
       })
       items.push({
         shift_date: cur,
@@ -40,7 +41,8 @@ export default function ShiftPlanner() {
         start_time: '19:00',
         end_time: '06:00',
         spots_available: Number(nightSlots),
-        department
+        department,
+        shift_status: 'active'
       })
       cur = addDays(cur, 1)
     }
@@ -63,10 +65,8 @@ export default function ShiftPlanner() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-white font-black text-2xl">Shift Planner</h1>
-        <p className="text-slate-300 text-sm mt-1">Create a range of Day/Night overtime shifts quickly.</p>
-      </div>
+      <h1 className="text-white font-black text-2xl">Shift Planner</h1>
+      <p className="text-slate-300 text-sm mt-1">Quick create Day/Night overtime shifts by date range.</p>
 
       {message ? (
         <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div>
@@ -101,21 +101,18 @@ export default function ShiftPlanner() {
 
         <div className="mt-4 flex gap-2">
           <button onClick={buildPreview} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 text-white font-extrabold">Preview</button>
-          <button disabled={loading || preview.length===0} onClick={publish} className="px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">{loading ? 'Publishing…' : 'Publish shifts'}</button>
+          <button disabled={loading || preview.length === 0} onClick={publish} className="px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+            {loading ? 'Publishing…' : 'Publish shifts'}
+          </button>
         </div>
       </div>
 
       <div className="mt-6 grid gap-3">
-        {preview.length ? (
-          <div className="text-white font-extrabold">Preview ({preview.length})</div>
-        ) : null}
-
+        {preview.length ? <div className="text-white font-extrabold">Preview ({preview.length})</div> : null}
         {preview.map((s) => (
           <div key={`${s.shift_date}-${s.shift_type}`} className="rounded-3xl bg-slate-900/40 border border-slate-800 p-4">
-            <div>
-              <div className="text-white font-extrabold">{s.shift_date} · {s.shift_type.toUpperCase()} · {s.department}</div>
-              <div className="text-sm text-slate-300 mt-1">{s.start_time}–{s.end_time}{s.shift_type==='night' ? ' (+1)' : ''} · Slots: {s.spots_available}</div>
-            </div>
+            <div className="text-white font-extrabold">{s.shift_date} · {s.shift_type.toUpperCase()} · {s.department}</div>
+            <div className="text-sm text-slate-300 mt-1">{s.start_time}–{s.end_time}{s.shift_type === 'night' ? ' (+1)' : ''} · Slots: {s.spots_available}</div>
           </div>
         ))}
       </div>

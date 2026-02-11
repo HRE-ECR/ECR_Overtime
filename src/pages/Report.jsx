@@ -29,7 +29,7 @@ export default function Report() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const exportCsv = async () => {
+  const exportFull = async () => {
     setMessage('')
     setLoading(true)
 
@@ -84,15 +84,60 @@ export default function Report() {
       }
     })
 
-    downloadText(`overtime_report_${start}_to_${end}.csv`, toCsv(rows))
-    setMessage(`Exported ${rows.length} rows.`)
+    downloadText(`overtime_report_full_${start}_to_${end}.csv`, toCsv(rows))
+    setMessage(`Exported FULL report: ${rows.length} rows.`)
+    setLoading(false)
+  }
+
+  const exportApprovedGrouped = async () => {
+    setMessage('')
+    setLoading(true)
+
+    const { data, error } = await supabase
+      .from('ot_requests')
+      .select('status, profile:profiles(full_name), shift:shifts(shift_date, shift_type)')
+      .eq('status', 'approved')
+
+    if (error) {
+      setMessage(error.message)
+      setLoading(false)
+      return
+    }
+
+    const filtered = (data || []).filter((r) => {
+      const d = r.shift?.shift_date
+      return d && d >= start && d <= end
+    })
+
+    const groups = {}
+    for (const r of filtered) {
+      const key = `${r.shift.shift_date}|${r.shift.shift_type}`
+      groups[key] = groups[key] || { date: r.shift.shift_date, shift: r.shift.shift_type, people: [] }
+      const name = r.profile?.full_name || 'Unknown'
+      if (!groups[key].people.includes(name)) groups[key].people.push(name)
+    }
+
+    const orderType = (t) => (t === 'day' ? 0 : 1)
+    const sorted = Object.values(groups).sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return orderType(a.shift) - orderType(b.shift)
+    })
+
+    const rows = sorted.map((g) => ({
+      date: g.date,
+      shift: g.shift,
+      approved_people: g.people.join('; ')
+    }))
+
+    downloadText(`overtime_report_approved_${start}_to_${end}.csv`, toCsv(rows))
+    setMessage(`Exported APPROVED grouped: ${rows.length} lines.`)
     setLoading(false)
   }
 
   return (
     <div>
       <h1 className="text-white font-black text-2xl">Report</h1>
-      <p className="text-slate-300 text-sm mt-1">Export OT to CSV (Excel compatible). Includes over-approval.</p>
+      <p className="text-slate-300 text-sm mt-1">Export OT to CSV (Excel compatible).</p>
 
       {message ? <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div> : null}
 
@@ -108,9 +153,16 @@ export default function Report() {
           </div>
         </div>
 
-        <button disabled={loading} onClick={exportCsv} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
-          {loading ? 'Exporting…' : 'Export CSV'}
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button disabled={loading} onClick={exportFull} className="px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+            {loading ? 'Working…' : 'Export FULL CSV'}
+          </button>
+          <button disabled={loading} onClick={exportApprovedGrouped} className="px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">
+            {loading ? 'Working…' : 'Export APPROVED (Grouped)'}
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-400 mt-3">Approved grouped export = one line per date+shift with names separated by “;”.</div>
       </div>
     </div>
   )

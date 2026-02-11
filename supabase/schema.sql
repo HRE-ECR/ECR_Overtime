@@ -59,19 +59,46 @@ returns boolean as $$
   select exists(select 1 from public.profiles p where p.id = uid and p.role in ('employee','manager'));
 $$ language sql stable;
 
--- SHIFTS
+-- SHIFTS (create if missing)
 create table if not exists public.shifts (
   id uuid primary key default gen_random_uuid(),
   shift_date date not null,
-  shift_type text not null check (shift_type in ('day','night')),
+  shift_type text,
   start_time time not null,
   end_time time not null,
   spots_available integer not null default 0 check (spots_available >= 0),
   department text not null,
   notes text,
+  shift_status text,
+  deleted_at timestamptz,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+-- MIGRATE: ensure shift_type exists and populated
+alter table public.shifts add column if not exists shift_type text;
+update public.shifts
+set shift_type = case when end_time < start_time then 'night' else 'day' end
+where shift_type is null;
+
+alter table public.shifts drop constraint if exists shifts_shift_type_check;
+alter table public.shifts add constraint shifts_shift_type_check
+  check (shift_type in ('day','night'));
+
+alter table public.shifts alter column shift_type set not null;
+alter table public.shifts alter column shift_type set default 'day';
+
+-- MIGRATE: soft-delete columns
+alter table public.shifts add column if not exists shift_status text;
+alter table public.shifts add column if not exists deleted_at timestamptz;
+update public.shifts set shift_status = coalesce(shift_status,'active') where shift_status is null;
+
+alter table public.shifts drop constraint if exists shifts_status_check;
+alter table public.shifts add constraint shifts_status_check
+  check (shift_status in ('active','deleted'));
+
+alter table public.shifts alter column shift_status set not null;
+alter table public.shifts alter column shift_status set default 'active';
 
 create unique index if not exists uq_shifts_date_type on public.shifts(shift_date, shift_type);
 create index if not exists idx_shifts_date on public.shifts(shift_date);
@@ -82,6 +109,7 @@ create table if not exists public.ot_requests (
   shift_id uuid not null references public.shifts(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   status text not null check (status in ('requested','approved','declined','cancelled')),
+  archived boolean not null default false,
   requested_at timestamptz not null default now(),
   decided_at timestamptz,
   decided_by uuid references auth.users(id) on delete set null,
@@ -100,7 +128,7 @@ begin
 end;
 $$;
 
--- COUNTS CACHE (table, not view)
+-- COUNTS CACHE
 create table if not exists public.ot_shift_counts (
   shift_id uuid primary key references public.shifts(id) on delete cascade,
   requested int not null default 0,
@@ -164,6 +192,30 @@ create trigger trg_ot_counts
 after insert or update or delete on public.ot_requests
 for each row execute function public.ot_counts_trigger();
 
+-- SOFT DELETE SHIFT + DECLINE RELATED REQUESTS
+create or replace function public.delete_shift_and_decline(p_shift_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.shifts
+  set shift_status = 'deleted',
+      deleted_at = now()
+  where id = p_shift_id;
+
+  update public.ot_requests
+  set status = 'declined',
+      decided_at = now(),
+      decided_by = auth.uid()
+  where shift_id = p_shift_id
+    and status in ('requested','approved');
+end;
+$$;
+
+grant execute on function public.delete_shift_and_decline(uuid) to authenticated;
+
 -- AUDIT LOG
 create table if not exists public.audit_log (
   id uuid primary key default gen_random_uuid(),
@@ -197,10 +249,10 @@ set search_path = public
 as $$
 begin
   if tg_op = 'INSERT' then
-    perform public.log_event('shift_created','shift',new.id, jsonb_build_object('shift_date',new.shift_date,'shift_type',new.shift_type,'slots',new.spots_available,'dept',new.department));
+    perform public.log_event('shift_created','shift',new.id, jsonb_build_object('shift_date',new.shift_date,'shift_type',new.shift_type,'slots',new.spots_available,'dept',new.department,'status',new.shift_status));
     return new;
   elsif tg_op = 'UPDATE' then
-    perform public.log_event('shift_updated','shift',new.id, jsonb_build_object('old_slots',old.spots_available,'new_slots',new.spots_available,'old_notes',old.notes,'new_notes',new.notes));
+    perform public.log_event('shift_updated','shift',new.id, jsonb_build_object('old_slots',old.spots_available,'new_slots',new.spots_available,'old_status',old.shift_status,'new_status',new.shift_status));
     return new;
   elsif tg_op = 'DELETE' then
     perform public.log_event('shift_deleted','shift',old.id, jsonb_build_object('shift_date',old.shift_date,'shift_type',old.shift_type));
@@ -229,7 +281,6 @@ begin
     perform public.log_event(act,'ot_request',new.id, jsonb_build_object('shift_id',new.shift_id,'user_id',new.user_id,'status',new.status));
     return new;
   elsif tg_op = 'UPDATE' then
-    -- classify based on new status
     if new.status = 'approved' then act := 'ot_approved';
     elsif new.status = 'declined' then act := 'ot_declined';
     elsif new.status = 'cancelled' then act := 'ot_cancelled';
@@ -269,7 +320,7 @@ create trigger trg_audit_profile_role
 after update on public.profiles
 for each row execute function public.audit_profile_role();
 
--- Enable RLS on app tables
+-- Enable RLS
 alter table public.shifts enable row level security;
 alter table public.ot_requests enable row level security;
 alter table public.ot_shift_counts enable row level security;
@@ -304,10 +355,6 @@ create policy "shifts_update_manager" on public.shifts
 for update using (public.is_manager(auth.uid()))
 with check (public.is_manager(auth.uid()));
 
-drop policy if exists "shifts_delete_manager" on public.shifts;
-create policy "shifts_delete_manager" on public.shifts
-for delete using (public.is_manager(auth.uid()));
-
 -- OT REQUEST POLICIES
 
 drop policy if exists "ot_select_own" on public.ot_requests;
@@ -328,6 +375,17 @@ drop policy if exists "ot_update_own_cancel" on public.ot_requests;
 create policy "ot_update_own_cancel" on public.ot_requests
 for update using (auth.uid() = user_id)
 with check (auth.uid() = user_id and status = 'cancelled');
+
+-- Allow employees to archive their own request only after shift date has passed
+
+drop policy if exists "ot_update_own_archive" on public.ot_requests;
+create policy "ot_update_own_archive" on public.ot_requests
+for update using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and archived = true
+  and exists (select 1 from public.shifts s where s.id = shift_id and s.shift_date < current_date)
+);
 
 
 drop policy if exists "ot_update_manager" on public.ot_requests;

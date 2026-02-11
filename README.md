@@ -1,18 +1,19 @@
-# OvertimeHub v3.1
+# OvertimeHub v3.2 (Full)
 
-## Changes
-- Users can now cancel **approved** OT requests (status becomes cancelled).
-- Added **Shift History Log** for managers (audit_log).
-- Fixed OT counts by using an `ot_shift_counts` table updated by triggers.
-
-## Deploy
-GitHub Pages: https://hre-ecr.github.io/ECR_Overtime/
+## New changes included
+- Report tab: **Export APPROVED (Grouped)** by date + day/night with names in one row.
+- Managers: **Modify Shifts** tab (increase slots, soft delete). Deleting a shift sets linked requested/approved OT to **DECLINED**.
+- Employees: **Hide past history** (archive) for OT items only after shift date.
+- Approve OT: requests are listed **first come first served** (requested_at ascending).
 
 ## Supabase
-Run `supabase/schema.sql` in SQL Editor.
+Run `supabase/schema.sql` in Supabase SQL Editor.
 
-Auth URLs:
+Auth URL Configuration:
 - Site URL: https://hre-ecr.github.io/ECR_Overtime
 - Redirect URLs:
   - https://hre-ecr.github.io/ECR_Overtime/*
   - https://hre-ecr.github.io/ECR_Overtime/reset-password*
+
+## GitHub Pages
+Upload this project to your repo and let GitHub Actions deploy.

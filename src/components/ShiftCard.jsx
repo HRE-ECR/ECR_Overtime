@@ -59,10 +59,6 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
               Cancel Request
             </button>
           ) : null}
-
-          {status === 'approved' ? (
-            <div className="text-xs text-slate-400 mt-1">Cancelling an approved OT will free up a slot for others.</div>
-          ) : null}
         </div>
       </div>
     </div>

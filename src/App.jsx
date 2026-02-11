@@ -12,6 +12,7 @@ import AwaitingApproval from './pages/AwaitingApproval'
 import AvailableShifts from './pages/AvailableShifts'
 import MyShifts from './pages/MyShifts'
 import ShiftPlanner from './pages/ShiftPlanner'
+import ModifyShifts from './pages/ModifyShifts'
 import ApproveOT from './pages/ApproveOT'
 import UserManagement from './pages/UserManagement'
 import Report from './pages/Report'
@@ -48,6 +49,7 @@ function TopNav({ user, profile, onSignOut }) {
           {isManager ? (
             <>
               <NavLink to="/planner" className={linkClass}>Shift Planner</NavLink>
+              <NavLink to="/modify" className={linkClass}>Modify Shifts</NavLink>
               <NavLink to="/approve" className={linkClass}>Approve OT</NavLink>
               <NavLink to="/users" className={linkClass}>User Management</NavLink>
               <NavLink to="/report" className={linkClass}>Report</NavLink>
@@ -134,6 +136,7 @@ export default function App() {
         <Route path="/my" element={<MyShifts />} />
 
         <Route path="/planner" element={isManager ? <ShiftPlanner /> : <AvailableShifts />} />
+        <Route path="/modify" element={isManager ? <ModifyShifts /> : <AvailableShifts />} />
         <Route path="/approve" element={isManager ? <ApproveOT /> : <AvailableShifts />} />
         <Route path="/users" element={isManager ? <UserManagement /> : <AvailableShifts />} />
         <Route path="/report" element={isManager ? <Report /> : <AvailableShifts />} />
@@ -162,7 +165,7 @@ export default function App() {
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.1 · Cancel approved OT · History log</div>
+        <div className="border-t border-slate-800 pt-4">v3.2 · Modify shifts · Approved grouped report · Hide past history · FCFS ordering</div>
       </footer>
     </div>
   )

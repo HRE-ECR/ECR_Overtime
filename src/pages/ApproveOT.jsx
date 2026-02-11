@@ -25,8 +25,9 @@ export default function ApproveOT() {
 
     const [{ data: shiftData, error: sErr }, { data: reqData, error: rErr }, { data: cntData, error: cErr }] = await Promise.all([
       supabase.from('shifts')
-        .select('id, shift_date, shift_type, start_time, end_time, spots_available, department')
+        .select('id, shift_date, shift_type, start_time, end_time, spots_available, department, shift_status')
         .gte('shift_date', today)
+        .eq('shift_status', 'active')
         .order('shift_date', { ascending: true })
         .order('shift_type', { ascending: true }),
       supabase.from('ot_requests')
@@ -56,9 +57,11 @@ export default function ApproveOT() {
 
   const decide = async (reqId, status) => {
     setError('')
+    const userId = (await supabase.auth.getUser()).data?.user?.id
+
     const { error: err } = await supabase
       .from('ot_requests')
-      .update({ status })
+      .update({ status, decided_at: new Date().toISOString(), decided_by: userId })
       .eq('id', reqId)
 
     if (err) setError(err.message)
@@ -70,13 +73,12 @@ export default function ApproveOT() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-white font-black text-2xl">Approve OT</h1>
-          <p className="text-slate-300 text-sm mt-1">Approve or decline overtime requests. Over-approval is allowed.</p>
+          <p className="text-slate-300 text-sm mt-1">Requests are displayed first‑come‑first‑served (requested_at ascending).</p>
         </div>
         <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
-
       {loading ? <div className="mt-5 text-slate-300">Loading…</div> : null}
 
       <div className="mt-5 grid gap-4">

@@ -34,16 +34,14 @@ export default function ForgotPassword() {
         <form onSubmit={send} className="mt-6 grid gap-3">
           <label className="text-sm font-bold text-slate-200">Email</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required
-            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-white/20" />
+            className="w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
 
           <button disabled={loading} className="mt-2 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
             {loading ? 'Sending…' : 'Send reset email'}
           </button>
         </form>
 
-        {message ? (
-          <div className="mt-4 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{message}</div>
-        ) : null}
+        {message ? <div className="mt-4 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{message}</div> : null}
 
         <div className="mt-5 text-sm"><Link to="/" className="text-slate-200 underline">Back to sign in</Link></div>
       </div>
