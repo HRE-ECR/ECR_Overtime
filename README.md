@@ -1,27 +1,29 @@
-# ECR_Overtime (OvertimeHub) – GitHub Pages build
+# OvertimeHub – Approval-gated account flow (Email + Password)
 
-Deploys as a GitHub Pages **project site**:
-- https://hre-ecr.github.io/ECR_Overtime/
+## What changed
+- Users self-signup with **email + password**.
+- After login, users see **Awaiting Admin Approval** until a manager sets their profile role.
+- Managers approve users in the **Admin Panel**.
+- Password reset is available.
 
-## Supabase Auth URLs
-Supabase → Authentication → URL Configuration:
+## GitHub Pages URL
+https://hre-ecr.github.io/ECR_Overtime/
+
+## Supabase Auth URL Configuration
+Set:
 - Site URL: https://hre-ecr.github.io/ECR_Overtime
 - Redirect URLs:
   - https://hre-ecr.github.io/ECR_Overtime
   - https://hre-ecr.github.io/ECR_Overtime/*
+  - https://hre-ecr.github.io/ECR_Overtime/reset-password
+  - https://hre-ecr.github.io/ECR_Overtime/reset-password/*
 
-## GitHub Secrets
-Repo → Settings → Secrets and variables → Actions:
-- VITE_SUPABASE_URL
-- VITE_SUPABASE_ANON_KEY
+## Note on Email Rate Limits
+Supabase built-in email provider has strict rate limits. For production, set up Custom SMTP.
 
-## Manager features
-Managers can:
-- Create shift posts
-- Confirm responders
-- Cancel confirmations
-- Delete shift posts
-
-## Password onboarding
-After first OTP login, users are prompted to set a permanent password.
-Magic Link remains available as a fallback.
+## Setup
+1) Run `supabase/schema.sql` in Supabase SQL Editor.
+2) Set GitHub secrets:
+   - VITE_SUPABASE_URL
+   - VITE_SUPABASE_ANON_KEY
+3) Deploy to GitHub Pages via Actions.

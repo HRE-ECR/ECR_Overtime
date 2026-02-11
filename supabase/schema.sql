@@ -3,12 +3,19 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
-  role text not null default 'employee' check (role in ('employee', 'manager')),
+  role text null,
   department text,
-  has_password boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Allow NULL role or approved roles
+alter table public.profiles
+  drop constraint if exists profiles_role_check;
+
+alter table public.profiles
+  add constraint profiles_role_check
+  check (role is null or role in ('employee','manager'));
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -23,11 +30,12 @@ create trigger trg_profiles_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
 
+-- New users get role = NULL (awaiting approval)
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles(id, full_name, role, has_password)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email), 'employee', false)
+  insert into public.profiles(id, full_name, role)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email), null)
   on conflict (id) do nothing;
   return new;
 end;
@@ -75,8 +83,7 @@ create table if not exists public.shift_confirmations (
   unique (shift_id, user_id)
 );
 
--- Add explicit FKs to profiles so PostgREST can join shift_responses/shift_confirmations -> profiles
--- (Avoids: "Could not find a relationship between 'shift_responses' and 'profiles'")
+-- Explicit FKs for PostgREST embedding to profiles
 
 do $$
 begin
@@ -104,7 +111,12 @@ returns boolean as $$
   select exists(select 1 from public.profiles p where p.id = uid and p.role = 'manager');
 $$ language sql stable;
 
--- Profiles policies
+create or replace function public.is_employee(uid uuid)
+returns boolean as $$
+  select exists(select 1 from public.profiles p where p.id = uid and p.role in ('employee','manager'));
+$$ language sql stable;
+
+-- PROFILES policies
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
@@ -114,15 +126,18 @@ drop policy if exists "profiles_select_manager_all" on public.profiles;
 create policy "profiles_select_manager_all" on public.profiles
 for select using (public.is_manager(auth.uid()));
 
-drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own" on public.profiles
-for update using (auth.uid() = id);
+-- Only managers can approve (update roles)
 
--- Shifts policies
+drop policy if exists "profiles_update_manager_all" on public.profiles;
+create policy "profiles_update_manager_all" on public.profiles
+for update using (public.is_manager(auth.uid()))
+with check (public.is_manager(auth.uid()));
 
-drop policy if exists "shifts_select_all_authed" on public.shifts;
-create policy "shifts_select_all_authed" on public.shifts
-for select using (auth.role() = 'authenticated');
+-- SHIFTS policies
+
+drop policy if exists "shifts_select_approved" on public.shifts;
+create policy "shifts_select_approved" on public.shifts
+for select using (public.is_employee(auth.uid()));
 
 drop policy if exists "shifts_insert_manager" on public.shifts;
 create policy "shifts_insert_manager" on public.shifts
@@ -132,7 +147,7 @@ drop policy if exists "shifts_delete_manager" on public.shifts;
 create policy "shifts_delete_manager" on public.shifts
 for delete using (public.is_manager(auth.uid()));
 
--- Responses policies
+-- RESPONSES policies
 
 drop policy if exists "responses_select_own" on public.shift_responses;
 create policy "responses_select_own" on public.shift_responses
@@ -142,19 +157,19 @@ drop policy if exists "responses_select_manager" on public.shift_responses;
 create policy "responses_select_manager" on public.shift_responses
 for select using (public.is_manager(auth.uid()));
 
-drop policy if exists "responses_upsert_own" on public.shift_responses;
-create policy "responses_upsert_own" on public.shift_responses
-for insert with check (auth.uid() = user_id);
+drop policy if exists "responses_insert_own" on public.shift_responses;
+create policy "responses_insert_own" on public.shift_responses
+for insert with check (public.is_employee(auth.uid()) and auth.uid() = user_id);
 
 drop policy if exists "responses_update_own" on public.shift_responses;
 create policy "responses_update_own" on public.shift_responses
 for update using (auth.uid() = user_id);
 
--- Confirmations policies
+-- CONFIRMATIONS policies
 
-drop policy if exists "confirmations_select_authed" on public.shift_confirmations;
-create policy "confirmations_select_authed" on public.shift_confirmations
-for select using (auth.role() = 'authenticated');
+drop policy if exists "confirmations_select_approved" on public.shift_confirmations;
+create policy "confirmations_select_approved" on public.shift_confirmations
+for select using (public.is_employee(auth.uid()));
 
 drop policy if exists "confirmations_insert_manager" on public.shift_confirmations;
 create policy "confirmations_insert_manager" on public.shift_confirmations

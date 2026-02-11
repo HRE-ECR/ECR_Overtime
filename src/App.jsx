@@ -4,9 +4,12 @@ import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { supabase, supabaseConfigError, isSupabaseReady } from './lib/supabaseClient'
 
 import Login from './pages/Login'
+import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import AwaitingApproval from './pages/AwaitingApproval'
 import Admin from './pages/Admin'
 import Calendar from './pages/Calendar'
-import SetPassword from './pages/SetPassword'
 import EmployeeShiftFeed from './components/EmployeeShiftFeed'
 import InstallPrompt from './components/InstallPrompt'
 
@@ -18,21 +21,18 @@ function TopNav({ user, profile, onSignOut }) {
     <div className="sticky top-0 z-40 backdrop-blur bg-navy-950/85 border-b border-slate-800">
       <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-2xl bg-navy-800 grid place-items-center shadow-card">
-            <span className="text-white font-black">OH</span>
-          </div>
+          <div className="h-9 w-9 rounded-2xl bg-navy-800 grid place-items-center shadow-card"><span className="text-white font-black">OH</span></div>
           <div>
             <div className="text-white font-extrabold leading-4">OvertimeHub</div>
-            <div className="text-xs text-slate-300">{profile?.department || 'Your depot / department'}</div>
+            <div className="text-xs text-slate-300">{profile?.department || 'Craigentinny / depot'}</div>
           </div>
         </div>
         {user ? (
-          <button onClick={onSignOut} className="px-3 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-sm font-semibold">
-            Sign out
-          </button>
+          <button onClick={onSignOut} className="px-3 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-sm font-semibold">Sign out</button>
         ) : null}
       </div>
-      {user ? (
+
+      {user && profile?.role ? (
         <div className="max-w-3xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
           <NavLink to="/" className={linkClass} end>Feed</NavLink>
           <NavLink to="/calendar" className={linkClass}>My Shifts</NavLink>
@@ -70,11 +70,13 @@ export default function App() {
 
   useEffect(() => {
     let ignore = false
+
     async function loadProfile() {
       if (!isSupabaseReady) {
         setProfile(null)
         return
       }
+
       if (!user) {
         setProfile(null)
         return
@@ -82,54 +84,58 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, department, has_password')
+        .select('id, full_name, role, department')
         .eq('id', user.id)
         .single()
 
       if (ignore) return
 
       if (error) {
-        setProfile({ id: user.id, full_name: user.email, role: 'employee', department: '', has_password: false })
+        setProfile({ id: user.id, full_name: user.email, role: null, department: '' })
       } else {
         setProfile(data)
       }
     }
+
     loadProfile()
     return () => { ignore = true }
   }, [user])
 
-  // Option 1: prompt to set password after first OTP login (but allow skipping)
-  useEffect(() => {
-    if (!user || !profile) return
-    if (profile.has_password === false) {
-      navigate('/set-password')
-    }
-  }, [user, profile, navigate])
-
   const onSignOut = async () => {
     if (!isSupabaseReady) return
     await supabase.auth.signOut()
-    navigate('/login')
+    navigate('/')
   }
 
-  const routes = useMemo(() => {
-    if (!user) {
+  const authedRoutes = useMemo(() => {
+    // Approved users only
+    if (profile?.role === null || profile?.role === undefined) {
       return (
         <Routes>
-          <Route path="/*" element={<Login />} />
+          <Route path="*" element={<AwaitingApproval email={user?.email} />} />
         </Routes>
       )
     }
+
     return (
       <Routes>
-        <Route path="/" element={<EmployeeShiftFeed profile={profile} />} />
-        <Route path="/calendar" element={<Calendar profile={profile} />} />
+        <Route path="/" element={<EmployeeShiftFeed />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/admin" element={<Admin profile={profile} />} />
-        <Route path="/set-password" element={<SetPassword />} />
-        <Route path="*" element={<EmployeeShiftFeed profile={profile} />} />
+        <Route path="*" element={<EmployeeShiftFeed />} />
       </Routes>
     )
-  }, [user, profile])
+  }, [profile, user])
+
+  const publicRoutes = (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="*" element={<Login />} />
+    </Routes>
+  )
 
   if (!isSupabaseReady) return <ConfigErrorScreen />
 
@@ -137,9 +143,11 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-b from-navy-950 via-slate-950 to-slate-950">
       <TopNav user={user} profile={profile} onSignOut={onSignOut} />
       <InstallPrompt />
-      <main className="max-w-3xl mx-auto px-4 py-5">{routes}</main>
+      <main className="max-w-3xl mx-auto px-4 py-5">
+        {user ? authedRoutes : publicRoutes}
+      </main>
       <footer className="safe-bottom max-w-3xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">Offline friendly · PWA ready · GitHub Pages ready</div>
+        <div className="border-t border-slate-800 pt-4">Approval-gated access · Password login · GitHub Pages ready</div>
       </footer>
     </div>
   )

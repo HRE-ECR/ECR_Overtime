@@ -28,16 +28,16 @@ function createStub() {
       getSession: async () => ({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: unsub } } }),
       getUser: async () => ({ data: { user: null }, error: null }),
-      signInWithOtp: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       signInWithPassword: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      signUp: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      resetPasswordForEmail: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       updateUser: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       signOut: async () => ({ error: null })
     },
     from: () => ({
       select: () => ({ eq: () => ({ single: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }) }),
-      insert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
-      upsert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       update: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
+      insert: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }),
       delete: () => ({ eq: async () => ({ data: null, error: { message: supabaseConfigError || 'Supabase not configured' } }) }),
       order: () => ({})
     })
