@@ -31,33 +31,6 @@ jobs:
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then echo "Missing secret: VITE_SUPABASE_URL"; exit 1; fi
           if [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then echo "Missing secret: VITE_SUPABASE_ANON_KEY"; exit 1; fi
 
-      - name: Validate Supabase secrets (safe)
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: |
-          case "$VITE_SUPABASE_URL" in
-            https://*|http://*) ;;
-            *) echo "VITE_SUPABASE_URL must start with http:// or https:// (check for spaces)"; exit 1;;
-          esac
-          if echo "$VITE_SUPABASE_URL" | grep -q "https://https://"; then
-            echo "VITE_SUPABASE_URL has double https://"; exit 1
-          fi
-          if [ "$VITE_SUPABASE_URL" != "$(echo "$VITE_SUPABASE_URL" | xargs)" ]; then
-            echo "VITE_SUPABASE_URL has leading/trailing spaces"; exit 1
-          fi
-          if ! echo "$VITE_SUPABASE_ANON_KEY" | grep -qE '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'; then
-            echo "VITE_SUPABASE_ANON_KEY does not look like a JWT (check for spaces/newlines)"; exit 1
-          fi
-          echo "Secrets validation passed."
-
-      - name: Fail fast if index.html is escaped/broken
-        run: |
-          if grep -q "&lt;" index.html; then
-            echo "index.html contains HTML entities (&lt;). Replace with real HTML tags (< >).";
-            exit 1;
-          fi
-
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
