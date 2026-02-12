@@ -1,19 +1,13 @@
-# OvertimeHub v3.2 (Full)
+# OvertimeHub v3.3
 
-## New changes included
-- Report tab: **Export APPROVED (Grouped)** by date + day/night with names in one row.
-- Managers: **Modify Shifts** tab (increase slots, soft delete). Deleting a shift sets linked requested/approved OT to **DECLINED**.
-- Employees: **Hide past history** (archive) for OT items only after shift date.
-- Approve OT: requests are listed **first come first served** (requested_at ascending).
+## Changes in this build
+- Fixes RLS error when employee cancels then requests same shift again:
+  - App uses UPDATE-first then INSERT.
+  - Added RLS policy `ot_update_own_request` to allow setting status back to `requested`.
+- Approve OT tab: Approved names are green with green border; declined names red with red border.
 
 ## Supabase
 Run `supabase/schema.sql` in Supabase SQL Editor.
 
-Auth URL Configuration:
-- Site URL: https://hre-ecr.github.io/ECR_Overtime
-- Redirect URLs:
-  - https://hre-ecr.github.io/ECR_Overtime/*
-  - https://hre-ecr.github.io/ECR_Overtime/reset-password*
-
 ## GitHub Pages
-Upload this project to your repo and let GitHub Actions deploy.
+Upload to your repo and push to `main`. GitHub Actions builds and deploys.

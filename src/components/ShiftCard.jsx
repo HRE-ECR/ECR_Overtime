@@ -7,11 +7,9 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
   const timeRange = `${shift.start_time?.slice(0,5)}–${shift.end_time?.slice(0,5)}${shift.shift_type === 'night' ? ' (+1)' : ''}`
 
   const status = myReq?.status || 'none'
-
   const requestedCount = counts?.requested || 0
   const approvedCount = counts?.approved || 0
   const declinedCount = counts?.declined || 0
-
   const overApproved = approvedCount > (shift.spots_available || 0)
 
   const chip = (label, cls) => (
@@ -43,21 +41,13 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
           </div>
         </div>
 
-        {shift.notes ? (
-          <div className="mt-3 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{shift.notes}</div>
-        ) : null}
-
         <div className="mt-4 flex gap-2">
           {status === 'none' || status === 'declined' || status === 'cancelled' ? (
-            <button onClick={onRequest} className="flex-1 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold">
-              Request OT
-            </button>
+            <button onClick={onRequest} className="flex-1 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold">Request OT</button>
           ) : null}
 
           {(status === 'requested' || status === 'approved') ? (
-            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold">
-              Cancel Request
-            </button>
+            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold">Cancel Request</button>
           ) : null}
         </div>
       </div>

@@ -38,11 +38,7 @@ export default function ModifyShifts() {
       return
     }
 
-    const { error: err } = await supabase
-      .from('shifts')
-      .update({ spots_available: slots })
-      .eq('id', shiftId)
-
+    const { error: err } = await supabase.from('shifts').update({ spots_available: slots }).eq('id', shiftId)
     if (err) setError(err.message)
     else load()
   }
@@ -88,24 +84,16 @@ export default function ModifyShifts() {
               <div className="flex flex-col gap-2 items-end">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-300">Slots</span>
-                  <input
-                    type="number"
-                    min="0"
-                    defaultValue={s.spots_available}
-                    className="w-24 px-3 py-2 rounded-xl bg-slate-950/40 border border-slate-700 text-white"
-                    onKeyDown={(e) => { if (e.key === 'Enter') updateSlots(s.id, e.currentTarget.value) }}
-                  />
-                  <button onClick={(e) => updateSlots(s.id, e.currentTarget.parentElement.querySelector('input').value)} className="px-3 py-2 rounded-xl bg-white text-navy-900 font-extrabold text-xs">Save</button>
+                  <input type="number" min="0" defaultValue={s.spots_available} className="w-24 px-3 py-2 rounded-xl bg-slate-950/40 border border-slate-700 text-white" onKeyDown={(e)=>{if(e.key==='Enter') updateSlots(s.id, e.currentTarget.value)}} />
+                  <button onClick={(e)=>updateSlots(s.id, e.currentTarget.parentElement.querySelector('input').value)} className="px-3 py-2 rounded-xl bg-white text-navy-900 font-extrabold text-xs">Save</button>
                 </div>
-
                 {s.shift_status !== 'deleted' ? (
-                  <button onClick={() => deleteShiftSoft(s.id)} className="px-3 py-2 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-100 font-extrabold text-xs">Delete shift</button>
+                  <button onClick={()=>deleteShiftSoft(s.id)} className="px-3 py-2 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-100 font-extrabold text-xs">Delete shift</button>
                 ) : null}
               </div>
             </div>
           </div>
         ))}
-
         {!loading && rows.length === 0 ? (
           <div className="rounded-3xl bg-slate-900/40 border border-slate-800 p-6 text-slate-200">
             <div className="font-extrabold text-white">No shifts in range</div>

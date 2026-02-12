@@ -68,6 +68,18 @@ export default function ApproveOT() {
     else load()
   }
 
+  const nameClass = (status) => {
+    if (status === 'approved') return 'text-emerald-300'
+    if (status === 'declined') return 'text-rose-300'
+    return 'text-slate-100'
+  }
+
+  const rowBorder = (status) => {
+    if (status === 'approved') return 'border-emerald-500/30'
+    if (status === 'declined') return 'border-rose-500/30'
+    return 'border-slate-800'
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
@@ -104,9 +116,9 @@ export default function ApproveOT() {
               <div className="mt-3 grid gap-2">
                 {list.length === 0 ? <div className="text-sm text-slate-400">No requests.</div> : null}
                 {list.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-3">
+                  <div key={r.id} className={`flex items-center justify-between gap-3 rounded-2xl border ${rowBorder(r.status)} bg-slate-950/30 p-3`}>
                     <div>
-                      <div className="text-slate-100 font-semibold">{r.profile?.full_name || r.user_id}</div>
+                      <div className={`${nameClass(r.status)} font-extrabold`}>{r.profile?.full_name || r.user_id}</div>
                       <div className="text-xs text-slate-400">Status: {r.status}</div>
                     </div>
                     <div className="flex gap-2">

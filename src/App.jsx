@@ -165,7 +165,7 @@ export default function App() {
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.2 · Modify shifts · Approved grouped report · Hide past history · FCFS ordering</div>
+        <div className="border-t border-slate-800 pt-4">v3.3 · RLS re-request fix · Approve OT colored borders</div>
       </footer>
     </div>
   )

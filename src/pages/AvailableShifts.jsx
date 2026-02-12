@@ -58,20 +58,43 @@ export default function AvailableShifts() {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
 
-    const { error: err } = await supabase
+    // Try update first (re-request after cancel/decline)
+    const { data: updated, error: upErr } = await supabase
       .from('ot_requests')
-      .upsert({
-        shift_id: shiftId,
-        user_id: userId,
+      .update({
         status: 'requested',
         requested_at: new Date().toISOString(),
         decided_at: null,
         decided_by: null,
         archived: false
-      }, { onConflict: 'shift_id,user_id' })
+      })
+      .eq('shift_id', shiftId)
+      .eq('user_id', userId)
+      .select('id')
 
-    if (err) setError(err.message)
-    else load()
+    if (upErr) {
+      setError(upErr.message)
+      return
+    }
+
+    if (!updated || updated.length === 0) {
+      const { error: insErr } = await supabase
+        .from('ot_requests')
+        .insert({
+          shift_id: shiftId,
+          user_id: userId,
+          status: 'requested',
+          requested_at: new Date().toISOString(),
+          archived: false
+        })
+
+      if (insErr) {
+        setError(insErr.message)
+        return
+      }
+    }
+
+    load()
   }
 
   const cancelRequest = async (shiftId) => {
