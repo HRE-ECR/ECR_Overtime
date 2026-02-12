@@ -5,8 +5,7 @@ import ShiftCard from '../components/ShiftCard'
 function daysBetween(isoA, isoB) {
   const a = new Date(isoA + 'T00:00:00Z')
   const b = new Date(isoB + 'T00:00:00Z')
-  const ms = b.getTime() - a.getTime()
-  return Math.floor(ms / (1000 * 60 * 60 * 24))
+  return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 export default function AvailableShifts() {
@@ -16,14 +15,13 @@ export default function AvailableShifts() {
   const [myRequests, setMyRequests] = useState([])
   const [counts, setCounts] = useState({})
 
-  // Roster filtering
   const [showOnlyRest, setShowOnlyRest] = useState(() => {
     const v = localStorage.getItem('oh_showOnlyRest')
     return v === null ? true : v === '1'
   })
   const [myTeam, setMyTeam] = useState('')
   const [baseDate, setBaseDate] = useState('2026-02-02')
-  const [pattern, setPattern] = useState([]) // day_index 0..27 with roster_type
+  const [pattern, setPattern] = useState([])
 
   const myReqByShift = useMemo(() => {
     const map = {}
@@ -111,7 +109,7 @@ export default function AvailableShifts() {
 
   const visibleShifts = useMemo(() => {
     if (!showOnlyRest) return shifts
-    if (!myTeam) return shifts // if team not set, don't hide anything
+    if (!myTeam) return shifts
     return shifts.filter(s => isRestDayForMyTeam(s.shift_date))
   }, [shifts, showOnlyRest, myTeam, baseDate, pattern])
 
@@ -119,7 +117,6 @@ export default function AvailableShifts() {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
 
-    // UPDATE-first then INSERT (avoids upsert/RLS edge cases)
     const { data: updated, error: upErr } = await supabase
       .from('ot_requests')
       .update({
@@ -181,7 +178,7 @@ export default function AvailableShifts() {
           {myTeam ? (
             <p className="text-xs text-slate-400 mt-1">Roster filter uses your team: <span className="text-slate-200 font-bold">{myTeam}</span></p>
           ) : (
-            <p className="text-xs text-amber-200 mt-1">Team not set yet — roster filtering is disabled until a manager assigns your team.</p>
+            <p className="text-xs text-amber-200 mt-1">Team not set yet — roster filtering is disabled until you set your team in User Profile.</p>
           )}
         </div>
 

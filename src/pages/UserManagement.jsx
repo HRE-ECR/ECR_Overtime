@@ -37,12 +37,7 @@ export default function UserManagement() {
 
   const loadStaffing = async (userId) => {
     if (!userId) return
-    const { data } = await supabase
-      .from('user_staffing')
-      .select('team, band')
-      .eq('user_id', userId)
-      .maybeSingle()
-
+    const { data } = await supabase.from('user_staffing').select('team, band').eq('user_id', userId).maybeSingle()
     setTeam(data?.team || '')
     setBand(data?.band || '')
   }
@@ -58,25 +53,24 @@ export default function UserManagement() {
 
   const saveRole = async () => {
     setError('')
-    const { error: err } = await supabase
-      .from('profiles')
-      .update({ role })
-      .eq('id', selectedId)
-
+    const { error: err } = await supabase.from('profiles').update({ role }).eq('id', selectedId)
     if (err) setError(err.message)
     else load()
   }
 
   const saveStaffing = async () => {
     setError('')
-    const payload = { user_id: selectedId, team: team || null, band: band || null }
-
     const { error: err } = await supabase
       .from('user_staffing')
-      .upsert(payload, { onConflict: 'user_id' })
+      .upsert({ user_id: selectedId, team: team || null, band: band || null }, { onConflict: 'user_id' })
 
     if (err) setError(err.message)
     else loadStaffing(selectedId)
+  }
+
+  const labelForUser = (u) => {
+    const name = u.full_name || u.id
+    return `${name} (${u.role})`
   }
 
   return (
@@ -84,18 +78,14 @@ export default function UserManagement() {
       <h1 className="text-white font-black text-2xl">User Management</h1>
       <p className="text-slate-300 text-sm mt-1">Change roles and set Team/Band (for roster filtering and approvals).</p>
 
-      {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div>
-      ) : null}
+      {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
 
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-300">User</label>
             <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.full_name || u.id} ({u.role})</option>
-              ))}
+              {users.map(u => (<option key={u.id} value={u.id}>{labelForUser(u)}</option>))}
             </select>
             <div className="text-xs text-slate-400 mt-2">{selected?.id}</div>
           </div>
@@ -114,7 +104,7 @@ export default function UserManagement() {
 
         <div className="mt-6 border-t border-slate-800 pt-5">
           <div className="text-white font-extrabold">Team & Band</div>
-          <div className="text-xs text-slate-400 mt-1">Used for roster filtering (rest days) and shown in approvals.</div>
+          <div className="text-xs text-slate-400 mt-1">Used for roster filtering and shown in approvals.</div>
 
           <div className="mt-3 grid md:grid-cols-2 gap-3">
             <div>

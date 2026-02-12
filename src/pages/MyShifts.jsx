@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { format } from 'date-fns'
 
@@ -12,6 +12,11 @@ export default function MyShifts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
+
+  const [showApprovedOnly, setShowApprovedOnly] = useState(() => {
+    const v = localStorage.getItem('oh_myApprovedOnly')
+    return v === '1'
+  })
 
   const todayIso = new Date().toISOString().slice(0, 10)
 
@@ -34,6 +39,15 @@ export default function MyShifts() {
   }
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    localStorage.setItem('oh_myApprovedOnly', showApprovedOnly ? '1' : '0')
+  }, [showApprovedOnly])
+
+  const visible = useMemo(() => {
+    if (!showApprovedOnly) return rows
+    return rows.filter(r => r.status === 'approved')
+  }, [rows, showApprovedOnly])
 
   const cancel = async (shiftId, status) => {
     setError('')
@@ -71,12 +85,25 @@ export default function MyShifts() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-white font-black text-2xl">My OT Requests</h1>
           <p className="text-slate-300 text-sm mt-1">Cancel (requested/approved) and hide past items from your list.</p>
         </div>
         <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-white font-extrabold">Show approved only</div>
+          <div className="text-xs text-slate-400">Toggle to hide requested/declined/cancelled items.</div>
+        </div>
+        <label className="inline-flex items-center cursor-pointer">
+          <input type="checkbox" className="sr-only" checked={showApprovedOnly} onChange={(e) => setShowApprovedOnly(e.target.checked)} />
+          <div className={`w-14 h-8 rounded-full border ${showApprovedOnly ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-slate-800/70 border-slate-700'} relative transition`}>
+            <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition ${showApprovedOnly ? 'translate-x-6' : ''}`}></div>
+          </div>
+        </label>
       </div>
 
       {error ? (
@@ -86,14 +113,14 @@ export default function MyShifts() {
       <div className="mt-5 grid gap-3">
         {loading ? <div className="text-slate-300">Loading…</div> : null}
 
-        {!loading && rows.length === 0 ? (
+        {!loading && visible.length === 0 ? (
           <div className="rounded-3xl bg-slate-900/40 border border-slate-800 p-6 text-slate-200">
             <div className="font-extrabold text-white">No OT requests</div>
-            <div className="text-sm mt-1">Request overtime from Available Shifts.</div>
+            <div className="text-sm mt-1">Try turning OFF “Show approved only”.</div>
           </div>
         ) : null}
 
-        {rows.map((r) => {
+        {visible.map((r) => {
           const s = r.shift
           const date = s ? new Date(s.shift_date) : null
           const title = s ? `${format(date, 'EEE dd MMM')} · ${shiftLabel(s.shift_type)} · ${s.department}` : r.shift_id

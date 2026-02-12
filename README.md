@@ -1,18 +1,16 @@
-# OvertimeHub v3.4 (Full)
+# OvertimeHub v3.5 (Full)
 
-## New features in this build
-- **User Profile** tab for approved users: set display name (format `J. Surname`) and optional phone.
-- **Team roster calendars** stored in Supabase as a 28-day repeating pattern (Team1–Team4) starting **Mon 2026-02-02**.
-- Available Shifts has toggle **Show only rest days** (default ON). When ON, shows OT shifts only on your team’s roster rest days.
-- **User Management** (manager) can set a user’s **Team** and **Band**.
-- **Approve OT** shows requester’s **Band** and shows which manager approved/declined.
-- UI polish: day/night emojis and improved wrapping.
+## Fixes
+- Fixes "profiles.phone does not exist" by adding migration to create `profiles.phone`.
+- Fixes Approve OT embed ambiguity by using explicit relationships to profiles and fetching user staffing separately.
 
-## Supabase setup
-1. Run `supabase/schema.sql` in Supabase SQL Editor.
-2. Ensure Auth URL Configuration:
-   - Site URL: https://hre-ecr.github.io/ECR_Overtime
-   - Redirect URLs: https://hre-ecr.github.io/ECR_Overtime/*
+## New changes
+- Employees can set their own Team and Band in User Profile.
+- My Shifts has a toggle to show only approved requests.
+- User Management dropdown displays: `J. Surname (employee)`.
 
-## Deployment
-Push to GitHub and GitHub Actions will build + deploy Pages.
+## Supabase
+Run `supabase/schema.sql` in Supabase SQL Editor.
+
+## Deploy
+Upload to GitHub repo and push to main. GitHub Actions will deploy to Pages.

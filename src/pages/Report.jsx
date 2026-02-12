@@ -35,7 +35,7 @@ export default function Report() {
 
     const { data, error } = await supabase
       .from('ot_requests')
-      .select('status, profile:profiles(full_name), shift:shifts(shift_date, shift_type)')
+      .select('status, profile:profiles!ot_requests_user_id_profiles_fkey(full_name), shift:shifts(shift_date, shift_type)')
       .eq('status', 'approved')
 
     if (error) {

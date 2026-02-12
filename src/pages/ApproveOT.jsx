@@ -13,6 +13,7 @@ export default function ApproveOT() {
   const [shifts, setShifts] = useState([])
   const [requests, setRequests] = useState([])
   const [counts, setCounts] = useState({})
+  const [staffingMap, setStaffingMap] = useState({})
 
   const requestsByShift = useMemo(() => {
     const map = {}
@@ -38,8 +39,7 @@ export default function ApproveOT() {
         .order('shift_type', { ascending: true }),
       supabase.from('ot_requests')
         .select(`id, shift_id, user_id, status, requested_at, decided_at, decided_by,
-                 profile:profiles(full_name),
-                 staffing:user_staffing(team, band),
+                 requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
                  approver:profiles!ot_requests_decided_by_profiles_fkey(full_name)`)
         .in('status', ['requested','approved','declined'])
         .order('requested_at', { ascending: true }),
@@ -53,12 +53,29 @@ export default function ApproveOT() {
       return
     }
 
-    const map = {}
-    for (const row of (cntData || [])) map[row.shift_id] = row
+    const countMap = {}
+    for (const row of (cntData || [])) countMap[row.shift_id] = row
+
+    // Load staffing for visible request user_ids
+    const ids = Array.from(new Set((reqData || []).map(r => r.user_id).filter(Boolean)))
+    let sMap = {}
+    if (ids.length) {
+      const { data: staff, error: stErr } = await supabase
+        .from('user_staffing')
+        .select('user_id, team, band')
+        .in('user_id', ids)
+
+      if (stErr) {
+        setError(stErr.message)
+      } else {
+        for (const row of (staff || [])) sMap[row.user_id] = row
+      }
+    }
 
     setShifts(shiftData || [])
     setRequests(reqData || [])
-    setCounts(map)
+    setCounts(countMap)
+    setStaffingMap(sMap)
     setLoading(false)
   }
 
@@ -87,13 +104,6 @@ export default function ApproveOT() {
     if (status === 'approved') return 'border-emerald-500/30'
     if (status === 'declined') return 'border-rose-500/30'
     return 'border-slate-800'
-  }
-
-  const bandText = (band) => {
-    if (!band) return ''
-    if (band.toLowerCase() === 'band a' || band.toLowerCase() === 'banda') return 'Band A'
-    if (band.toLowerCase() === 'band b' || band.toLowerCase() === 'bandb') return 'Band B'
-    return band
   }
 
   return (
@@ -135,8 +145,9 @@ export default function ApproveOT() {
                 {list.length === 0 ? <div className="text-sm text-slate-400">No requests.</div> : null}
 
                 {list.map((r) => {
-                  const band = bandText(r.staffing?.band)
-                  const displayName = r.profile?.full_name || r.user_id
+                  const staff = staffingMap[r.user_id] || {}
+                  const band = staff.band
+                  const displayName = r.requester?.full_name || r.user_id
                   const approverName = r.approver?.full_name
 
                   return (

@@ -169,7 +169,7 @@ export default function App() {
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.4 · User Profile · Team roster filter · Band + approver display</div>
+        <div className="border-t border-slate-800 pt-4">v3.5 · Phone fix · Profile embed fix · Employee team/band · Approved-only toggle</div>
       </footer>
     </div>
   )
