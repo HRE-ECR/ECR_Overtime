@@ -1,16 +1,18 @@
--- OvertimeHub v3.4 schema (migration-friendly)
+-- OvertimeHub v3.5 schema (migration-friendly)
 create extension if not exists "pgcrypto";
 
 -- PROFILES
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
-  phone text,
   role text not null default 'new_user',
   department text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Ensure phone column exists (fixes "column profiles.phone does not exist")
+alter table public.profiles add column if not exists phone text;
 
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check
@@ -61,7 +63,12 @@ returns boolean as $$
   select exists(select 1 from public.profiles p where p.id = uid and p.role in ('employee','manager'));
 $$ language sql stable;
 
--- USER STAFFING (Team + Band) managed by managers
+create or replace function public.is_employee_only(uid uuid)
+returns boolean as $$
+  select exists(select 1 from public.profiles p where p.id = uid and p.role = 'employee');
+$$ language sql stable;
+
+-- USER STAFFING
 create table if not exists public.user_staffing (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   team text,
@@ -79,7 +86,7 @@ alter table public.user_staffing drop constraint if exists user_staffing_band_ch
 alter table public.user_staffing add constraint user_staffing_band_check
   check (band is null or band in ('Band A','Band B'));
 
--- ROSTER PATTERN (28-day repeating) + config base date
+-- ROSTER PATTERN
 create table if not exists public.roster_config (
   id int primary key,
   base_date date not null
@@ -106,7 +113,6 @@ alter table public.team_roster_pattern drop constraint if exists team_roster_day
 alter table public.team_roster_pattern add constraint team_roster_day_index_check
   check (day_index between 0 and 27);
 
--- Seed roster patterns (from 4-week roster starting Monday 2026-02-02)
 insert into public.team_roster_pattern(team, day_index, roster_type, start_time, end_time)
 values
   ('Team1', 0, 'rest', null::time, null::time),
@@ -222,9 +228,9 @@ values
   ('Team4', 26, 'rest', null::time, null::time),
   ('Team4', 27, 'rest', null::time, null::time)
 on conflict (team, day_index)
-do update set roster_type = excluded.roster_type,
-              start_time = excluded.start_time,
-              end_time = excluded.end_time;
+  do update set roster_type = excluded.roster_type,
+                start_time = excluded.start_time,
+                end_time = excluded.end_time;
 
 alter table public.team_roster_pattern enable row level security;
 alter table public.roster_config enable row level security;
@@ -289,7 +295,7 @@ update public.ot_requests set archived = false where archived is null;
 alter table public.ot_requests alter column archived set default false;
 alter table public.ot_requests alter column archived set not null;
 
--- Add FK to profiles for user_id embedding
+-- FKs to profiles for embedding (explicit)
 
 do $$
 begin
@@ -301,7 +307,6 @@ begin
 end;
 $$;
 
--- Add FK to profiles for decided_by (so we can join approver name in UI)
 
 do $$
 begin
@@ -323,44 +328,28 @@ create table if not exists public.ot_shift_counts (
 );
 
 create or replace function public.recalc_ot_counts(p_shift_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  r int;
-  a int;
-  d int;
+returns void language plpgsql security definer set search_path = public as $$
+declare r int; a int; d int;
 begin
-  select
-    sum(case when status='requested' then 1 else 0 end),
-    sum(case when status='approved' then 1 else 0 end),
-    sum(case when status='declined' then 1 else 0 end)
-  into r, a, d
-  from public.ot_requests
-  where shift_id = p_shift_id;
+  select sum(case when status='requested' then 1 else 0 end),
+         sum(case when status='approved' then 1 else 0 end),
+         sum(case when status='declined' then 1 else 0 end)
+    into r, a, d
+  from public.ot_requests where shift_id = p_shift_id;
 
-  r := coalesce(r,0);
-  a := coalesce(a,0);
-  d := coalesce(d,0);
+  r := coalesce(r,0); a := coalesce(a,0); d := coalesce(d,0);
 
   insert into public.ot_shift_counts(shift_id, requested, approved, declined, updated_at)
   values (p_shift_id, r, a, d, now())
   on conflict (shift_id)
   do update set requested = excluded.requested,
-               approved = excluded.approved,
-               declined = excluded.declined,
+               approved  = excluded.approved,
+               declined  = excluded.declined,
                updated_at = now();
-end;
-$$;
+end; $$;
 
 create or replace function public.ot_counts_trigger()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if tg_op = 'DELETE' then
     perform public.recalc_ot_counts(old.shift_id);
@@ -369,35 +358,18 @@ begin
     perform public.recalc_ot_counts(new.shift_id);
     return new;
   end if;
-end;
-$$;
+end; $$;
 
 drop trigger if exists trg_ot_counts on public.ot_requests;
-create trigger trg_ot_counts
-after insert or update or delete on public.ot_requests
-for each row execute function public.ot_counts_trigger();
+create trigger trg_ot_counts after insert or update or delete on public.ot_requests for each row execute function public.ot_counts_trigger();
 
 -- SOFT DELETE SHIFT + DECLINE RELATED REQUESTS
 create or replace function public.delete_shift_and_decline(p_shift_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
+returns void language plpgsql security definer set search_path = public as $$
 begin
-  update public.shifts
-  set shift_status = 'deleted',
-      deleted_at = now()
-  where id = p_shift_id;
-
-  update public.ot_requests
-  set status = 'declined',
-      decided_at = now(),
-      decided_by = auth.uid()
-  where shift_id = p_shift_id
-    and status in ('requested','approved');
-end;
-$$;
+  update public.shifts set shift_status='deleted', deleted_at=now() where id=p_shift_id;
+  update public.ot_requests set status='declined', decided_at=now(), decided_by=auth.uid() where shift_id=p_shift_id and status in ('requested','approved');
+end; $$;
 
 grant execute on function public.delete_shift_and_decline(uuid) to authenticated;
 
@@ -414,7 +386,7 @@ create table if not exists public.audit_log (
 
 alter table public.audit_log enable row level security;
 
--- RLS enable
+-- Enable RLS on app tables
 alter table public.shifts enable row level security;
 alter table public.ot_requests enable row level security;
 alter table public.ot_shift_counts enable row level security;
@@ -422,38 +394,41 @@ alter table public.ot_shift_counts enable row level security;
 -- PROFILES POLICIES
 
 drop policy if exists "profiles_select_own" on public.profiles;
-create policy "profiles_select_own" on public.profiles
-for select using (auth.uid() = id);
+create policy "profiles_select_own" on public.profiles for select using (auth.uid() = id);
 
 drop policy if exists "profiles_select_manager_all" on public.profiles;
-create policy "profiles_select_manager_all" on public.profiles
-for select using (public.is_manager(auth.uid()));
+create policy "profiles_select_manager_all" on public.profiles for select using (public.is_manager(auth.uid()));
 
--- Allow approved users to update their own display name + phone
+-- Let users update their own display fields (full_name, phone). (UI limits what is written)
 
 drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own" on public.profiles
-for update using (auth.uid() = id)
-with check (auth.uid() = id);
+create policy "profiles_update_own" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- Managers can update any profile row
+-- Managers can update profile rows
 
 drop policy if exists "profiles_update_manager_all" on public.profiles;
-create policy "profiles_update_manager_all" on public.profiles
-for update using (public.is_manager(auth.uid()))
-with check (public.is_manager(auth.uid()));
+create policy "profiles_update_manager_all" on public.profiles for update using (public.is_manager(auth.uid())) with check (public.is_manager(auth.uid()));
 
 -- USER STAFFING POLICIES
 
 drop policy if exists "staff_select_own" on public.user_staffing;
-create policy "staff_select_own" on public.user_staffing
-for select using (auth.uid() = user_id);
+create policy "staff_select_own" on public.user_staffing for select using (auth.uid() = user_id);
 
 drop policy if exists "staff_select_manager" on public.user_staffing;
-create policy "staff_select_manager" on public.user_staffing
-for select using (public.is_manager(auth.uid()));
+create policy "staff_select_manager" on public.user_staffing for select using (public.is_manager(auth.uid()));
 
--- Only managers can insert/update staffing
+-- Employees can set their own team/band
+
+drop policy if exists "staff_upsert_own_employee" on public.user_staffing;
+create policy "staff_upsert_own_employee" on public.user_staffing
+for insert with check (public.is_employee_only(auth.uid()) and auth.uid() = user_id);
+
+drop policy if exists "staff_update_own_employee" on public.user_staffing;
+create policy "staff_update_own_employee" on public.user_staffing
+for update using (public.is_employee_only(auth.uid()) and auth.uid() = user_id)
+with check (public.is_employee_only(auth.uid()) and auth.uid() = user_id);
+
+-- Managers can upsert staffing for others
 
 drop policy if exists "staff_upsert_manager" on public.user_staffing;
 create policy "staff_upsert_manager" on public.user_staffing
@@ -461,94 +436,68 @@ for insert with check (public.is_manager(auth.uid()));
 
 drop policy if exists "staff_update_manager" on public.user_staffing;
 create policy "staff_update_manager" on public.user_staffing
-for update using (public.is_manager(auth.uid()))
-with check (public.is_manager(auth.uid()));
+for update using (public.is_manager(auth.uid())) with check (public.is_manager(auth.uid()));
+
+-- ROSTER SELECT (authenticated)
+
+drop policy if exists "roster_select_auth" on public.team_roster_pattern;
+create policy "roster_select_auth" on public.team_roster_pattern for select using (auth.role() = 'authenticated');
+
+drop policy if exists "roster_config_select_auth" on public.roster_config;
+create policy "roster_config_select_auth" on public.roster_config for select using (auth.role() = 'authenticated');
 
 -- SHIFTS POLICIES
 
 drop policy if exists "shifts_select_approved" on public.shifts;
-create policy "shifts_select_approved" on public.shifts
-for select using (public.is_employee(auth.uid()));
+create policy "shifts_select_approved" on public.shifts for select using (public.is_employee(auth.uid()));
 
 drop policy if exists "shifts_insert_manager" on public.shifts;
-create policy "shifts_insert_manager" on public.shifts
-for insert with check (public.is_manager(auth.uid()));
+create policy "shifts_insert_manager" on public.shifts for insert with check (public.is_manager(auth.uid()));
 
 drop policy if exists "shifts_update_manager" on public.shifts;
-create policy "shifts_update_manager" on public.shifts
-for update using (public.is_manager(auth.uid()))
-with check (public.is_manager(auth.uid()));
+create policy "shifts_update_manager" on public.shifts for update using (public.is_manager(auth.uid())) with check (public.is_manager(auth.uid()));
 
 -- OT REQUEST POLICIES
 
 drop policy if exists "ot_select_own" on public.ot_requests;
-create policy "ot_select_own" on public.ot_requests
-for select using (auth.uid() = user_id);
+create policy "ot_select_own" on public.ot_requests for select using (auth.uid() = user_id);
 
 drop policy if exists "ot_select_manager" on public.ot_requests;
-create policy "ot_select_manager" on public.ot_requests
-for select using (public.is_manager(auth.uid()));
+create policy "ot_select_manager" on public.ot_requests for select using (public.is_manager(auth.uid()));
 
 drop policy if exists "ot_insert_own_requested" on public.ot_requests;
 create policy "ot_insert_own_requested" on public.ot_requests
 for insert with check (public.is_employee(auth.uid()) and auth.uid() = user_id and status = 'requested' and archived = false);
 
--- Allow employees to cancel their own request
 
 drop policy if exists "ot_update_own_cancel" on public.ot_requests;
 create policy "ot_update_own_cancel" on public.ot_requests
 for update using (auth.uid() = user_id)
 with check (auth.uid() = user_id and status = 'cancelled');
 
--- Allow employees to re-request their own OT after cancel/decline
 
 drop policy if exists "ot_update_own_request" on public.ot_requests;
 create policy "ot_update_own_request" on public.ot_requests
 for update using (auth.uid() = user_id)
-with check (
-  auth.uid() = user_id
-  and status = 'requested'
-  and archived = false
-  and decided_at is null
-  and decided_by is null
-);
+with check (auth.uid() = user_id and status = 'requested' and archived = false and decided_at is null and decided_by is null);
 
--- Allow employees to archive after shift date passed
 
 drop policy if exists "ot_update_own_archive" on public.ot_requests;
 create policy "ot_update_own_archive" on public.ot_requests
 for update using (auth.uid() = user_id)
-with check (
-  auth.uid() = user_id
-  and archived = true
-  and exists (select 1 from public.shifts s where s.id = shift_id and s.shift_date < current_date)
-);
+with check (auth.uid() = user_id and archived = true and exists (select 1 from public.shifts s where s.id = shift_id and s.shift_date < current_date));
 
--- Managers can update any OT request
 
 drop policy if exists "ot_update_manager" on public.ot_requests;
 create policy "ot_update_manager" on public.ot_requests
-for update using (public.is_manager(auth.uid()))
-with check (public.is_manager(auth.uid()));
+for update using (public.is_manager(auth.uid())) with check (public.is_manager(auth.uid()));
 
 -- COUNTS SELECT
 
 drop policy if exists "counts_select_approved" on public.ot_shift_counts;
-create policy "counts_select_approved" on public.ot_shift_counts
-for select using (public.is_employee(auth.uid()));
-
--- ROSTER SELECT (all authenticated)
-
-drop policy if exists "roster_select_auth" on public.team_roster_pattern;
-create policy "roster_select_auth" on public.team_roster_pattern
-for select using (auth.role() = 'authenticated');
-
-drop policy if exists "roster_config_select_auth" on public.roster_config;
-create policy "roster_config_select_auth" on public.roster_config
-for select using (auth.role() = 'authenticated');
+create policy "counts_select_approved" on public.ot_shift_counts for select using (public.is_employee(auth.uid()));
 
 -- AUDIT SELECT managers
 
 drop policy if exists "audit_select_manager" on public.audit_log;
-create policy "audit_select_manager" on public.audit_log
-for select using (public.is_manager(auth.uid()));
+create policy "audit_select_manager" on public.audit_log for select using (public.is_manager(auth.uid()));
