@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
+const TEAMS = ['Team1', 'Team2', 'Team3', 'Team4']
+const BANDS = ['Band A', 'Band B']
+
 export default function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -8,41 +11,95 @@ export default function UserManagement() {
   const [selectedId, setSelectedId] = useState('')
   const [role, setRole] = useState('employee')
 
+  const [team, setTeam] = useState('')
+  const [band, setBand] = useState('')
+
   const selected = useMemo(() => users.find(u => u.id === selectedId), [users, selectedId])
 
   const load = async () => {
     setLoading(true)
     setError('')
-    const { data, error: err } = await supabase.from('profiles').select('id, full_name, role, department, created_at').order('full_name', { ascending: true })
+
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, department, created_at')
+      .order('full_name', { ascending: true })
+
     if (err) setError(err.message)
     setUsers(data || [])
-    if (!selectedId && (data || []).length) { setSelectedId(data[0].id); setRole(data[0].role) }
+
+    if (!selectedId && (data || []).length) {
+      setSelectedId(data[0].id)
+    }
+
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
-  useEffect(() => { if (selected) setRole(selected.role) }, [selected])
+  const loadStaffing = async (userId) => {
+    if (!userId) return
+    const { data } = await supabase
+      .from('user_staffing')
+      .select('team, band')
+      .eq('user_id', userId)
+      .maybeSingle()
 
-  const save = async () => {
+    setTeam(data?.team || '')
+    setBand(data?.band || '')
+  }
+
+  useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    if (selected) {
+      setRole(selected.role)
+      loadStaffing(selected.id)
+    }
+  }, [selectedId])
+
+  const saveRole = async () => {
     setError('')
-    const { error: err } = await supabase.from('profiles').update({ role }).eq('id', selectedId)
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', selectedId)
+
     if (err) setError(err.message)
     else load()
+  }
+
+  const saveStaffing = async () => {
+    setError('')
+    const payload = { user_id: selectedId, team: team || null, band: band || null }
+
+    const { error: err } = await supabase
+      .from('user_staffing')
+      .upsert(payload, { onConflict: 'user_id' })
+
+    if (err) setError(err.message)
+    else loadStaffing(selectedId)
   }
 
   return (
     <div>
       <h1 className="text-white font-black text-2xl">User Management</h1>
-      <p className="text-slate-300 text-sm mt-1">Select a user and change their role.</p>
-      {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
+      <p className="text-slate-300 text-sm mt-1">Change roles and set Team/Band (for roster filtering and approvals).</p>
+
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div>
+      ) : null}
+
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
-        <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-300">User</label>
             <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
-              {users.map(u => (<option key={u.id} value={u.id}>{u.full_name || u.id} ({u.role})</option>))}
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.full_name || u.id} ({u.role})</option>
+              ))}
             </select>
+            <div className="text-xs text-slate-400 mt-2">{selected?.id}</div>
           </div>
+
           <div>
             <label className="text-xs font-bold text-slate-300">Role</label>
             <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
@@ -50,8 +107,33 @@ export default function UserManagement() {
               <option value="employee">employee</option>
               <option value="manager">manager</option>
             </select>
-            <button disabled={loading} onClick={save} className="mt-3 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">Save</button>
+
+            <button disabled={loading} onClick={saveRole} className="mt-3 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">Save role</button>
           </div>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-5">
+          <div className="text-white font-extrabold">Team & Band</div>
+          <div className="text-xs text-slate-400 mt-1">Used for roster filtering (rest days) and shown in approvals.</div>
+
+          <div className="mt-3 grid md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-300">Team</label>
+              <select value={team} onChange={(e) => setTeam(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
+                <option value="">(not set)</option>
+                {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-300">Band</label>
+              <select value={band} onChange={(e) => setBand(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
+                <option value="">(not set)</option>
+                {BANDS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <button disabled={loading || !selectedId} onClick={saveStaffing} className="mt-3 px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">Save team & band</button>
         </div>
       </div>
     </div>

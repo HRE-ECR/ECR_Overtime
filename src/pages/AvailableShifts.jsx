@@ -2,6 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import ShiftCard from '../components/ShiftCard'
 
+function daysBetween(isoA, isoB) {
+  const a = new Date(isoA + 'T00:00:00Z')
+  const b = new Date(isoB + 'T00:00:00Z')
+  const ms = b.getTime() - a.getTime()
+  return Math.floor(ms / (1000 * 60 * 60 * 24))
+}
+
 export default function AvailableShifts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -9,11 +16,44 @@ export default function AvailableShifts() {
   const [myRequests, setMyRequests] = useState([])
   const [counts, setCounts] = useState({})
 
+  // Roster filtering
+  const [showOnlyRest, setShowOnlyRest] = useState(() => {
+    const v = localStorage.getItem('oh_showOnlyRest')
+    return v === null ? true : v === '1'
+  })
+  const [myTeam, setMyTeam] = useState('')
+  const [baseDate, setBaseDate] = useState('2026-02-02')
+  const [pattern, setPattern] = useState([]) // day_index 0..27 with roster_type
+
   const myReqByShift = useMemo(() => {
     const map = {}
     for (const r of myRequests) map[r.shift_id] = r
     return map
   }, [myRequests])
+
+  const loadRoster = async () => {
+    const userId = (await supabase.auth.getUser()).data?.user?.id
+
+    const [{ data: cfg }, { data: staff }] = await Promise.all([
+      supabase.from('roster_config').select('base_date').eq('id', 1).maybeSingle(),
+      supabase.from('user_staffing').select('team').eq('user_id', userId).maybeSingle()
+    ])
+
+    const team = staff?.team || ''
+    setMyTeam(team)
+    setBaseDate(cfg?.base_date || '2026-02-02')
+
+    if (team) {
+      const { data } = await supabase
+        .from('team_roster_pattern')
+        .select('day_index, roster_type')
+        .eq('team', team)
+        .order('day_index', { ascending: true })
+      setPattern(data || [])
+    } else {
+      setPattern([])
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -52,13 +92,34 @@ export default function AvailableShifts() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    loadRoster()
+    load()
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('oh_showOnlyRest', showOnlyRest ? '1' : '0')
+  }, [showOnlyRest])
+
+  const isRestDayForMyTeam = (shiftDateIso) => {
+    if (!myTeam || !pattern?.length) return false
+    const delta = daysBetween(baseDate, shiftDateIso)
+    const idx = ((delta % 28) + 28) % 28
+    const row = pattern.find(p => p.day_index === idx)
+    return row?.roster_type === 'rest'
+  }
+
+  const visibleShifts = useMemo(() => {
+    if (!showOnlyRest) return shifts
+    if (!myTeam) return shifts // if team not set, don't hide anything
+    return shifts.filter(s => isRestDayForMyTeam(s.shift_date))
+  }, [shifts, showOnlyRest, myTeam, baseDate, pattern])
 
   const requestOt = async (shiftId) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
 
-    // Try update first (re-request after cancel/decline)
+    // UPDATE-first then INSERT (avoids upsert/RLS edge cases)
     const { data: updated, error: upErr } = await supabase
       .from('ot_requests')
       .update({
@@ -113,26 +174,48 @@ export default function AvailableShifts() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-white font-black text-2xl">Available Shifts</h1>
           <p className="text-slate-300 text-sm mt-1">Request overtime by tapping “Request OT”.</p>
+          {myTeam ? (
+            <p className="text-xs text-slate-400 mt-1">Roster filter uses your team: <span className="text-slate-200 font-bold">{myTeam}</span></p>
+          ) : (
+            <p className="text-xs text-amber-200 mt-1">Team not set yet — roster filtering is disabled until a manager assigns your team.</p>
+          )}
         </div>
-        <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
+
+        <div className="flex items-center gap-2">
+          <button onClick={loadRoster} className="px-3 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Reload roster</button>
+          <button onClick={load} className="px-3 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-white font-extrabold">Show only rest days</div>
+          <div className="text-xs text-slate-400">Default ON. Turn OFF to show all overtime shifts.</div>
+        </div>
+        <label className="inline-flex items-center cursor-pointer">
+          <input type="checkbox" className="sr-only" checked={showOnlyRest} onChange={(e) => setShowOnlyRest(e.target.checked)} />
+          <div className={`w-14 h-8 rounded-full border ${showOnlyRest ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-slate-800/70 border-slate-700'} relative transition`}>
+            <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition ${showOnlyRest ? 'translate-x-6' : ''}`}></div>
+          </div>
+        </label>
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
       {loading ? <div className="mt-5 text-slate-300">Loading…</div> : null}
 
       <div className="mt-5 grid gap-4">
-        {!loading && shifts.length === 0 ? (
+        {!loading && visibleShifts.length === 0 ? (
           <div className="rounded-3xl bg-slate-900/40 border border-slate-800 p-6 text-slate-200">
-            <div className="font-extrabold text-white">No shifts posted</div>
-            <div className="text-sm mt-1">Managers will publish overtime here.</div>
+            <div className="font-extrabold text-white">No shifts match the filter</div>
+            <div className="text-sm mt-1">Try turning OFF “Show only rest days”.</div>
           </div>
         ) : null}
 
-        {shifts.map((s) => (
+        {visibleShifts.map((s) => (
           <ShiftCard
             key={s.id}
             shift={s}

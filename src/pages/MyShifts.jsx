@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { format } from 'date-fns'
 
+function shiftLabel(type) {
+  if (type === 'day') return '☀️ Day'
+  if (type === 'night') return '🌙 Night'
+  return type
+}
+
 export default function MyShifts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -90,7 +96,7 @@ export default function MyShifts() {
         {rows.map((r) => {
           const s = r.shift
           const date = s ? new Date(s.shift_date) : null
-          const title = s ? `${format(date, 'EEE dd MMM')} · ${s.shift_type.toUpperCase()} · ${s.department}` : r.shift_id
+          const title = s ? `${format(date, 'EEE dd MMM')} · ${shiftLabel(s.shift_type)} · ${s.department}` : r.shift_id
           const timeRange = s ? `${s.start_time?.slice(0,5)}–${s.end_time?.slice(0,5)}${s.shift_type==='night' ? ' (+1)' : ''}` : ''
           const status = r.status
           const statusLabel = (status || '').toUpperCase()
@@ -100,8 +106,8 @@ export default function MyShifts() {
 
           return (
             <div key={r.id} className="rounded-3xl bg-slate-900/50 border border-slate-800 p-4 shadow-card">
-              <div className="flex items-start justify-between gap-3">
-                <div>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
                   <div className="text-white font-extrabold">{title}</div>
                   <div className="text-sm text-slate-300 mt-1">{timeRange}</div>
                 </div>

@@ -11,6 +11,8 @@ import AwaitingApproval from './pages/AwaitingApproval'
 
 import AvailableShifts from './pages/AvailableShifts'
 import MyShifts from './pages/MyShifts'
+import UserProfile from './pages/UserProfile'
+
 import ShiftPlanner from './pages/ShiftPlanner'
 import ModifyShifts from './pages/ModifyShifts'
 import ApproveOT from './pages/ApproveOT'
@@ -46,6 +48,7 @@ function TopNav({ user, profile, onSignOut }) {
         <div className="max-w-4xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
           <NavLink to="/" className={linkClass} end>Available Shifts</NavLink>
           <NavLink to="/my" className={linkClass}>My Shifts</NavLink>
+          <NavLink to="/profile" className={linkClass}>User Profile</NavLink>
           {isManager ? (
             <>
               <NavLink to="/planner" className={linkClass}>Shift Planner</NavLink>
@@ -134,6 +137,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AvailableShifts />} />
         <Route path="/my" element={<MyShifts />} />
+        <Route path="/profile" element={<UserProfile />} />
 
         <Route path="/planner" element={isManager ? <ShiftPlanner /> : <AvailableShifts />} />
         <Route path="/modify" element={isManager ? <ModifyShifts /> : <AvailableShifts />} />
@@ -165,7 +169,7 @@ export default function App() {
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.3 · RLS re-request fix · Approve OT colored borders</div>
+        <div className="border-t border-slate-800 pt-4">v3.4 · User Profile · Team roster filter · Band + approver display</div>
       </footer>
     </div>
   )

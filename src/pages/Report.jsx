@@ -58,16 +58,9 @@ export default function Report() {
     }
 
     const orderType = (t) => (t === 'day' ? 0 : 1)
-    const sorted = Object.values(groups).sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date)
-      return orderType(a.shift) - orderType(b.shift)
-    })
-
-    const rows = sorted.map((g) => ({
-      date: g.date,
-      shift: g.shift,
-      approved_people: g.people.join('; ')
-    }))
+    const rows = Object.values(groups)
+      .sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : orderType(a.shift) - orderType(b.shift)))
+      .map(g => ({ date: g.date, shift: g.shift, approved_people: g.people.join('; ') }))
 
     downloadText(`overtime_report_approved_${start}_to_${end}.csv`, toCsv(rows))
     setMessage(`Exported APPROVED grouped: ${rows.length} lines.`)
@@ -77,14 +70,27 @@ export default function Report() {
   return (
     <div>
       <h1 className="text-white font-black text-2xl">Report</h1>
-      <p className="text-slate-300 text-sm mt-1">Approved export grouped by date+shift.</p>
+      <p className="text-slate-300 text-sm mt-1">Export approved overtime grouped by date + shift.</p>
+
       {message ? <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div> : null}
+
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
         <div className="grid md:grid-cols-2 gap-3">
-          <div><label className="text-xs font-bold text-slate-300">Start date</label><input value={start} onChange={(e)=>setStart(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white"/></div>
-          <div><label className="text-xs font-bold text-slate-300">End date</label><input value={end} onChange={(e)=>setEnd(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white"/></div>
+          <div>
+            <label className="text-xs font-bold text-slate-300">Start date</label>
+            <input value={start} onChange={(e) => setStart(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-300">End date</label>
+            <input value={end} onChange={(e) => setEnd(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
+          </div>
         </div>
-        <button disabled={loading} onClick={exportApprovedGrouped} className="mt-4 px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">{loading?'Working…':'Export APPROVED (Grouped)'}</button>
+
+        <button disabled={loading} onClick={exportApprovedGrouped} className="mt-4 px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">
+          {loading ? 'Working…' : 'Export APPROVED (Grouped)'}
+        </button>
+
+        <div className="text-xs text-slate-400 mt-3">One row per date+shift. Approved names separated by “;”.</div>
       </div>
     </div>
   )
