@@ -64,7 +64,6 @@ export default function ApproveOT() {
         .from('user_staffing')
         .select('user_id, team, band')
         .in('user_id', ids)
-
       if (stErr) setError(stErr.message)
       else for (const row of (staff || [])) sMap[row.user_id] = row
     }
@@ -81,12 +80,10 @@ export default function ApproveOT() {
   const decide = async (reqId, status) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
-
     const { error: err } = await supabase
       .from('ot_requests')
       .update({ status, decided_at: new Date().toISOString(), decided_by: userId })
       .eq('id', reqId)
-
     if (err) setError(err.message)
     else load()
   }
@@ -108,7 +105,7 @@ export default function ApproveOT() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-white font-black text-2xl">Approve OT</h1>
-          <p className="text-slate-300 text-sm mt-1">Requests are displayed first‑come‑first‑served (requested_at ascending).</p>
+          <p className="text-slate-300 text-sm mt-1">Requests are first‑come‑first‑served (requested_at ascending).</p>
         </div>
         <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
       </div>
@@ -121,24 +118,18 @@ export default function ApproveOT() {
           const list = (requestsByShift[s.id] || []).filter(r => r.status !== 'cancelled')
           const c = counts[s.id] || { requested: 0, approved: 0, declined: 0 }
           const over = c.approved > s.spots_available
-
-          const d = new Date(s.shift_date)
-          const niceDate = format(d, 'EEE d MMM')
+          const niceDate = format(new Date(s.shift_date), 'EEE d MMM')
 
           return (
             <div key={s.id} className="rounded-3xl bg-slate-900/50 border border-slate-800 p-4 shadow-card">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <div className="text-white font-extrabold">{niceDate} · {shiftLabel(s.shift_type)} · {s.department}</div>
-                  <div className="text-sm text-slate-300 mt-1">{s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)}{s.shift_type==='night' ? ' (+1)' : ''}</div>
-                  <div className="text-xs text-slate-400 mt-2">
-                    Slots: <span className="text-slate-200 font-bold">{s.spots_available}</span> ·
-                    Requested: <span className="text-slate-200 font-bold">{c.requested}</span> ·
-                    Approved: <span className={over ? 'text-amber-200 font-bold' : 'text-slate-200 font-bold'}>{c.approved}</span> ·
-                    Declined: <span className="text-slate-200 font-bold">{c.declined}</span>
-                    {over ? <span className="ml-2 text-amber-200 font-bold">(Over-approved)</span> : null}
-                  </div>
-                </div>
+              <div className="text-white font-extrabold">{niceDate} · {shiftLabel(s.shift_type)} · {s.department}</div>
+              <div className="text-sm text-slate-300 mt-1">{s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)}{s.shift_type==='night' ? ' (+1)' : ''}</div>
+              <div className="text-xs text-slate-400 mt-2">
+                Slots: <span className="text-slate-200 font-bold">{s.spots_available}</span> ·
+                Requested: <span className="text-slate-200 font-bold">{c.requested}</span> ·
+                Approved: <span className={over ? 'text-amber-200 font-bold' : 'text-slate-200 font-bold'}>{c.approved}</span> ·
+                Declined: <span className="text-slate-200 font-bold">{c.declined}</span>
+                {over ? <span className="ml-2 text-amber-200 font-bold">(Over-approved)</span> : null}
               </div>
 
               <div className="mt-3 grid gap-2">
@@ -160,7 +151,6 @@ export default function ApproveOT() {
                             <div className="text-xs text-slate-300 mt-1">Approved by: <span className="text-slate-100 font-bold">{approverName}</span></div>
                           ) : null}
                         </div>
-
                         <div className="flex gap-2 w-full sm:w-auto">
                           <button onClick={() => decide(r.id, 'approved')} className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold text-xs">Approve</button>
                           <button onClick={() => decide(r.id, 'declined')} className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-100 font-extrabold text-xs">Decline</button>

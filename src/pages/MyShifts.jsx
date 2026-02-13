@@ -13,17 +13,13 @@ export default function MyShifts() {
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
 
-  const [showApprovedOnly, setShowApprovedOnly] = useState(() => {
-    const v = localStorage.getItem('oh_myApprovedOnly')
-    return v === '1'
-  })
+  const [showApprovedOnly, setShowApprovedOnly] = useState(() => localStorage.getItem('oh_myApprovedOnly') === '1')
 
   const todayIso = new Date().toISOString().slice(0, 10)
 
   const load = async () => {
     setLoading(true)
     setError('')
-
     const userId = (await supabase.auth.getUser()).data?.user?.id
 
     const { data, error: err } = await supabase
@@ -39,24 +35,16 @@ export default function MyShifts() {
   }
 
   useEffect(() => { load() }, [])
+  useEffect(() => { localStorage.setItem('oh_myApprovedOnly', showApprovedOnly ? '1' : '0') }, [showApprovedOnly])
 
-  useEffect(() => {
-    localStorage.setItem('oh_myApprovedOnly', showApprovedOnly ? '1' : '0')
-  }, [showApprovedOnly])
-
-  const visible = useMemo(() => {
-    if (!showApprovedOnly) return rows
-    return rows.filter(r => r.status === 'approved')
-  }, [rows, showApprovedOnly])
+  const visible = useMemo(() => showApprovedOnly ? rows.filter(r => r.status === 'approved') : rows, [rows, showApprovedOnly])
 
   const cancel = async (shiftId, status) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
-
     const msg = status === 'approved'
       ? 'Cancel an APPROVED OT request? This will free the slot for someone else.'
       : 'Cancel this OT request?'
-
     if (!confirm(msg)) return
 
     const { error: err } = await supabase
@@ -72,13 +60,11 @@ export default function MyShifts() {
   const archive = async (shiftId) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
-
     const { error: err } = await supabase
       .from('ot_requests')
       .update({ archived: true })
       .eq('shift_id', shiftId)
       .eq('user_id', userId)
-
     if (err) setError(err.message)
     else load()
   }
@@ -86,7 +72,6 @@ export default function MyShifts() {
   const hideDeclinedCancelled = async () => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
-
     if (!confirm('Hide ALL declined and cancelled items from your list?')) return
 
     const { error: err } = await supabase
@@ -131,13 +116,10 @@ export default function MyShifts() {
         </label>
       </div>
 
-      {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div>
-      ) : null}
+      {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
+      {loading ? <div className="mt-5 text-slate-300">Loading…</div> : null}
 
       <div className="mt-5 grid gap-3">
-        {loading ? <div className="text-slate-300">Loading…</div> : null}
-
         {!loading && visible.length === 0 ? (
           <div className="rounded-3xl bg-slate-900/40 border border-slate-800 p-6 text-slate-200">
             <div className="font-extrabold text-white">No OT requests</div>
@@ -151,8 +133,6 @@ export default function MyShifts() {
           const title = s ? `${format(date, 'EEE d MMM')} · ${shiftLabel(s.shift_type)} · ${s.department}` : r.shift_id
           const timeRange = s ? `${s.start_time?.slice(0,5)}–${s.end_time?.slice(0,5)}${s.shift_type==='night' ? ' (+1)' : ''}` : ''
           const status = r.status
-          const statusLabel = (status || '').toUpperCase()
-
           const canCancel = status === 'requested' || status === 'approved'
           const isPast = s?.shift_date ? (s.shift_date < todayIso) : false
 
@@ -164,7 +144,7 @@ export default function MyShifts() {
                   <div className="text-sm text-slate-200/90 mt-1">{timeRange}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-black text-white">{statusLabel}</div>
+                  <div className="text-xs font-black text-white">{(status||'').toUpperCase()}</div>
                   <div className="mt-2 flex flex-col gap-2 items-end">
                     {canCancel ? (
                       <button onClick={() => cancel(r.shift_id, status)} className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold text-xs">Cancel</button>

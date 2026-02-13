@@ -32,45 +32,21 @@ export default function Report() {
     setMessage('')
     setLoading(true)
 
-    const { data, error } = await supabase
-      .from('ot_requests')
-      .select(`notes, status, decided_by,
-               requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
-               approver:profiles!ot_requests_decided_by_profiles_fkey(full_name),
-               shift:shifts(shift_date, shift_type)`)
-      .eq('status', 'approved')
-
-    if (error) {
-      setMessage(error.message)
-      setLoading(false)
-      return
-    }
-
-    const filtered = (data || []).filter(r => {
-      const d = r.shift?.shift_date
-      return d && d >= start && d <= end
-    })
-
-    // Load staffing for requesters
-    const ids = Array.from(new Set(filtered.map(r => r.requester ? r.requester.id : null).filter(Boolean)))
-    // However requester embed doesn't include id; use decided structure: fallback to separate query based on auth? We'll instead re-fetch user_ids.
-    // Better: fetch again using ot_requests with user_id included.
-
-    const { data: baseReqs, error: bErr } = await supabase
+    const { data: reqs, error: rErr } = await supabase
       .from('ot_requests')
       .select(`id, user_id, notes, status,
                requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
                approver:profiles!ot_requests_decided_by_profiles_fkey(full_name),
                shift:shifts(shift_date, shift_type)`)
-      .eq('status','approved')
+      .eq('status', 'approved')
 
-    if (bErr) {
-      setMessage(bErr.message)
+    if (rErr) {
+      setMessage(rErr.message)
       setLoading(false)
       return
     }
 
-    const inRange = (baseReqs || []).filter(r => {
+    const inRange = (reqs || []).filter(r => {
       const d = r.shift?.shift_date
       return d && d >= start && d <= end
     })
@@ -94,22 +70,14 @@ export default function Report() {
 
     const rows = inRange.map(r => {
       const d = new Date(r.shift.shift_date)
-      const dateText = format(d, 'EEE d MMM yyyy')
-      const shiftText = r.shift.shift_type === 'day' ? 'Day' : 'Night'
-      const name = r.requester?.full_name || ''
-      const staff = staffingMap[r.user_id] || {}
-      const team = staff.team || ''
-      const band = staff.band || ''
-      const approvedBy = r.approver?.full_name || ''
-      const notes = (r.notes || '').slice(0, 500)
       return {
-        'Date': dateText,
-        'Shift': shiftText,
-        'Name': name,
-        'Team': team,
-        'Band': band,
-        'Approved by': approvedBy,
-        'Notes': notes
+        'Date': format(d, 'EEE d MMM yyyy'),
+        'Shift': r.shift.shift_type === 'day' ? 'Day' : 'Night',
+        'Name': r.requester?.full_name || '',
+        'Team': staffingMap[r.user_id]?.team || '',
+        'Band': staffingMap[r.user_id]?.band || '',
+        'Approved by': r.approver?.full_name || '',
+        'Notes': (r.notes || '').slice(0, 500)
       }
     })
 
@@ -122,9 +90,7 @@ export default function Report() {
     <div>
       <h1 className="text-white font-black text-2xl">Report</h1>
       <p className="text-slate-300 text-sm mt-1">Export approved overtime to CSV (Excel compatible).</p>
-
       {message ? <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div> : null}
-
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
         <div className="grid md:grid-cols-2 gap-3">
           <div>
@@ -136,11 +102,7 @@ export default function Report() {
             <input value={end} onChange={(e) => setEnd(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
           </div>
         </div>
-
-        <button disabled={loading} onClick={exportApproved} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
-          {loading ? 'Working…' : 'Export APPROVED CSV'}
-        </button>
-
+        <button disabled={loading} onClick={exportApproved} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">{loading ? 'Working…' : 'Export APPROVED CSV'}</button>
         <div className="text-xs text-slate-400 mt-3">Columns: Date, Shift, Name, Team, Band, Approved by, Notes.</div>
       </div>
     </div>

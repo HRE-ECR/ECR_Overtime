@@ -13,11 +13,9 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
   const timeRange = `${shift.start_time?.slice(0,5)}–${shift.end_time?.slice(0,5)}${shift.shift_type === 'night' ? ' (+1)' : ''}`
 
   const status = myReq?.status || 'none'
-
   const requestedCount = counts?.requested || 0
   const approvedCount = counts?.approved || 0
   const declinedCount = counts?.declined || 0
-
   const overApproved = approvedCount > (shift.spots_available || 0)
 
   const chip = (label, cls) => (
@@ -51,10 +49,6 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
           </div>
         </div>
 
-        {shift.notes ? (
-          <div className="mt-3 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{shift.notes}</div>
-        ) : null}
-
         <div className="mt-4 grid grid-cols-2 gap-2">
           {status === 'none' || status === 'declined' || status === 'cancelled' ? (
             <button onClick={onRequest} className="py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold">Request OT</button>
@@ -66,15 +60,13 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
             onClick={() => canNotes && onNotes?.()}
             disabled={!canNotes}
             className={`py-3 rounded-2xl border font-extrabold ${canNotes ? 'bg-slate-800/70 border-slate-700 text-white hover:bg-slate-700' : 'bg-slate-950/20 border-slate-800 text-slate-500 cursor-not-allowed'}`}
-            title={canNotes ? 'Add / edit notes for this shift request' : 'Request OT first to add notes'}
+            title={canNotes ? 'Add / edit notes' : 'Request OT first to add notes'}
           >
             Notes
           </button>
         </div>
 
-        {!canNotes ? (
-          <div className="mt-2 text-[11px] text-slate-500">Notes are available after you have requested a shift.</div>
-        ) : null}
+        {!canNotes ? <div className="mt-2 text-[11px] text-slate-500">Notes are available after you have requested a shift.</div> : null}
       </div>
     </div>
   )

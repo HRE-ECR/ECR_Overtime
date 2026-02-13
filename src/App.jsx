@@ -28,7 +28,6 @@ function TopNav({ user, profile, onSignOut, testMode }) {
 
   const isApproved = user && profile?.role && profile.role !== 'new_user'
   const isManager = profile?.role === 'manager'
-
   const showEmployeeTabs = !isManager || testMode
 
   return (
@@ -87,20 +86,17 @@ export default function App() {
 
   useEffect(() => {
     if (!isSupabaseReady) return
-
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
     return () => sub?.subscription?.unsubscribe?.()
   }, [])
 
-  // Load global app settings (test mode)
   useEffect(() => {
     let ignore = false
     async function loadSettings() {
       if (!isSupabaseReady) return
       const { data } = await supabase.from('app_settings').select('test_mode_enabled').eq('id', 1).maybeSingle()
-      if (ignore) return
-      setTestMode(Boolean(data?.test_mode_enabled))
+      if (!ignore) setTestMode(Boolean(data?.test_mode_enabled))
     }
     loadSettings()
     return () => { ignore = true }
@@ -108,26 +104,18 @@ export default function App() {
 
   useEffect(() => {
     let ignore = false
-
     async function loadProfile() {
       if (!isSupabaseReady) { setProfile(null); return }
       if (!user) { setProfile(null); return }
-
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, role, department')
         .eq('id', user.id)
         .single()
-
       if (ignore) return
-
-      if (error) {
-        setProfile({ id: user.id, full_name: user.email, role: 'new_user', department: '' })
-      } else {
-        setProfile({ ...data, role: data?.role || 'new_user' })
-      }
+      if (error) setProfile({ id: user.id, full_name: user.email, role: 'new_user', department: '' })
+      else setProfile({ ...data, role: data?.role || 'new_user' })
     }
-
     loadProfile()
     return () => { ignore = true }
   }, [user])
@@ -152,7 +140,6 @@ export default function App() {
 
     return (
       <Routes>
-        {/* Employee tabs (hidden for managers unless test mode) */}
         <Route path="/" element={showEmployeeTabs ? <AvailableShifts /> : <UserManagement testMode={testMode} onTestModeChange={setTestMode} />} />
         <Route path="/my" element={showEmployeeTabs ? <MyShifts /> : <UserManagement testMode={testMode} onTestModeChange={setTestMode} />} />
 
@@ -188,7 +175,7 @@ export default function App() {
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.6 · Notes · Report columns · Cleanup · Test mode</div>
+        <div className="border-t border-slate-800 pt-4">v3.6 · Fixed cron.schedule quoting</div>
       </footer>
     </div>
   )
