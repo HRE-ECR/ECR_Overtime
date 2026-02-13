@@ -41,8 +41,8 @@ export default function ApproveOT() {
       supabase.from('ot_requests')
         .select(`id, shift_id, user_id, status, requested_at, decided_at, decided_by,
                  requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
-                 approver:profiles!ot_requests_decided_by_profiles_fkey(full_name)`)
-        .in('status', ['requested','approved','declined'])
+                 decider:profiles!ot_requests_decided_by_profiles_fkey(full_name)`)
+        .in('status', ['requested', 'approved', 'declined'])
         .order('requested_at', { ascending: true }),
       supabase.from('ot_shift_counts')
         .select('shift_id, requested, approved, declined')
@@ -80,10 +80,12 @@ export default function ApproveOT() {
   const decide = async (reqId, status) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
+
     const { error: err } = await supabase
       .from('ot_requests')
       .update({ status, decided_at: new Date().toISOString(), decided_by: userId })
       .eq('id', reqId)
+
     if (err) setError(err.message)
     else load()
   }
@@ -139,7 +141,7 @@ export default function ApproveOT() {
                   const staff = staffingMap[r.user_id] || {}
                   const band = staff.band
                   const displayName = r.requester?.full_name || r.user_id
-                  const approverName = r.approver?.full_name
+                  const deciderName = r.decider?.full_name
 
                   return (
                     <div key={r.id} className={`rounded-2xl border ${rowBorder(r.status)} bg-slate-950/30 p-3`}>
@@ -147,8 +149,8 @@ export default function ApproveOT() {
                         <div className="min-w-0">
                           <div className={`${nameClass(r.status)} font-extrabold break-words`}>{displayName}{band ? ` (${band})` : ''}</div>
                           <div className="text-xs text-slate-400 mt-1">Status: {r.status}</div>
-                          {(r.status === 'approved' || r.status === 'declined') && approverName ? (
-                            <div className="text-xs text-slate-300 mt-1">Approved by: <span className="text-slate-100 font-bold">{approverName}</span></div>
+                          {(r.status === 'approved' || r.status === 'declined') && deciderName ? (
+                            <div className="text-xs text-slate-300 mt-1">Decided by: <span className="text-slate-100 font-bold">{deciderName}</span></div>
                           ) : null}
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">

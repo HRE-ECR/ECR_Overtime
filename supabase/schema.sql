@@ -457,3 +457,79 @@ CREATE POLICY roster_config_select_auth ON public.roster_config FOR SELECT USING
 
 DROP POLICY IF EXISTS audit_select_manager ON public.audit_log;
 CREATE POLICY audit_select_manager ON public.audit_log FOR SELECT USING (public.is_manager(auth.uid()));
+-- =========================================================
+-- Auto-decline other shift (Day/Night same calendar day)
+-- When an OT request becomes APPROVED, decline the user's
+-- request for the opposite shift_type on the same shift_date.
+-- =========================================================
+
+create or replace function public.auto_decline_other_shift_same_day()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_shift_date date;
+  v_shift_type text;
+  v_other_type text;
+  v_other_shift_id uuid;
+begin
+  -- Only act when a request transitions to approved
+  if tg_op <> 'UPDATE' then
+    return new;
+  end if;
+
+  if new.status <> 'approved' then
+    return new;
+  end if;
+
+  if old.status = 'approved' then
+    return new;
+  end if;
+
+  -- Determine the shift date/type of the approved request
+  select s.shift_date, s.shift_type
+    into v_shift_date, v_shift_type
+  from public.shifts s
+  where s.id = new.shift_id;
+
+  if v_shift_date is null or v_shift_type is null then
+    return new;
+  end if;
+
+  v_other_type := case when v_shift_type = 'day' then 'night' else 'day' end;
+
+  -- Find the other shift (same date, opposite type)
+  select s2.id
+    into v_other_shift_id
+  from public.shifts s2
+  where s2.shift_date = v_shift_date
+    and s2.shift_type = v_other_type
+  limit 1;
+
+  if v_other_shift_id is null then
+    return new;
+  end if;
+
+  -- Decline the user's other request for that other shift, if it exists
+  -- (Declines both 'requested' and 'approved' to enforce one-per-day)
+  update public.ot_requests r
+     set status = 'declined',
+         decided_at = now(),
+         decided_by = new.decided_by
+   where r.user_id = new.user_id
+     and r.shift_id = v_other_shift_id
+     and r.id <> new.id
+     and r.status in ('requested','approved');
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_auto_decline_other_shift_same_day on public.ot_requests;
+
+create trigger trg_auto_decline_other_shift_same_day
+after update of status on public.ot_requests
+for each row
+execute function public.auto_decline_other_shift_same_day();
