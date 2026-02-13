@@ -20,6 +20,7 @@ export default function MyShifts() {
   const load = async () => {
     setLoading(true)
     setError('')
+
     const userId = (await supabase.auth.getUser()).data?.user?.id
 
     const { data, error: err } = await supabase
@@ -42,9 +43,11 @@ export default function MyShifts() {
   const cancel = async (shiftId, status) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
+
     const msg = status === 'approved'
       ? 'Cancel an APPROVED OT request? This will free the slot for someone else.'
       : 'Cancel this OT request?'
+
     if (!confirm(msg)) return
 
     const { error: err } = await supabase
@@ -60,11 +63,13 @@ export default function MyShifts() {
   const archive = async (shiftId) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
+
     const { error: err } = await supabase
       .from('ot_requests')
       .update({ archived: true })
       .eq('shift_id', shiftId)
       .eq('user_id', userId)
+
     if (err) setError(err.message)
     else load()
   }
@@ -72,6 +77,7 @@ export default function MyShifts() {
   const hideDeclinedCancelled = async () => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
+
     if (!confirm('Hide ALL declined and cancelled items from your list?')) return
 
     const { error: err } = await supabase
@@ -144,7 +150,7 @@ export default function MyShifts() {
                   <div className="text-sm text-slate-200/90 mt-1">{timeRange}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-black text-white">{(status||'').toUpperCase()}</div>
+                  <div className="text-xs font-black text-white">{(status || '').toUpperCase()}</div>
                   <div className="mt-2 flex flex-col gap-2 items-end">
                     {canCancel ? (
                       <button onClick={() => cancel(r.shift_id, status)} className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold text-xs">Cancel</button>

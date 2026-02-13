@@ -60,7 +60,6 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
             onClick={() => canNotes && onNotes?.()}
             disabled={!canNotes}
             className={`py-3 rounded-2xl border font-extrabold ${canNotes ? 'bg-slate-800/70 border-slate-700 text-white hover:bg-slate-700' : 'bg-slate-950/20 border-slate-800 text-slate-500 cursor-not-allowed'}`}
-            title={canNotes ? 'Add / edit notes' : 'Request OT first to add notes'}
           >
             Notes
           </button>

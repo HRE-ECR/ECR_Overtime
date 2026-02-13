@@ -29,6 +29,5 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']
       }
     })
-  ],
-  server: { port: 5173 }
+  ]
 })

@@ -1,5 +1,7 @@
--- OvertimeHub v3.6 schema (FIXED)
--- Fix: cron.schedule() command string is now single-quoted to avoid nested $$ ... $$ parsing errors.
+-- OvertimeHub v3.6 schema (FIXED + NOTES migration)
+-- Fixes:
+-- 1) cron.schedule quoting (no nested $$)
+-- 2) notes columns added via ALTER TABLE for existing databases
 
 create extension if not exists "pgcrypto";
 
@@ -24,7 +26,8 @@ returns trigger as $$
 begin new.updated_at = now(); return new; end; $$ language plpgsql;
 
 drop trigger if exists trg_profiles_updated_at on public.profiles;
-create trigger trg_profiles_updated_at before update on public.profiles for each row execute function public.set_updated_at();
+create trigger trg_profiles_updated_at
+before update on public.profiles for each row execute function public.set_updated_at();
 
 alter table public.profiles enable row level security;
 alter table public.profiles no force row level security;
@@ -39,7 +42,8 @@ begin
 end; $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+create trigger on_auth_user_created
+after insert on auth.users for each row execute function public.handle_new_user();
 
 create or replace function public.is_manager(uid uuid)
 returns boolean language sql stable as $$
@@ -102,12 +106,14 @@ create table if not exists public.team_roster_pattern (
 );
 
 alter table public.team_roster_pattern drop constraint if exists team_roster_type_check;
-alter table public.team_roster_pattern add constraint team_roster_type_check check (roster_type in ('rest','day','night'));
+alter table public.team_roster_pattern add constraint team_roster_type_check
+  check (roster_type in ('rest','day','night'));
 
 alter table public.team_roster_pattern drop constraint if exists team_roster_day_index_check;
-alter table public.team_roster_pattern add constraint team_roster_day_index_check check (day_index between 0 and 27);
+alter table public.team_roster_pattern add constraint team_roster_day_index_check
+  check (day_index between 0 and 27);
 
--- Seed patterns (same as previous builds)
+-- Seed patterns (your full list) — safe to re-run
 insert into public.team_roster_pattern(team, day_index, roster_type, start_time, end_time)
 values
   ('Team1', 0, 'rest', null::time, null::time),
@@ -225,8 +231,7 @@ values
 on conflict (team, day_index)
   do update set roster_type = excluded.roster_type,
                 start_time = excluded.start_time,
-                end_time = excluded.end_time
-;
+                end_time = excluded.end_time;
 
 alter table public.team_roster_pattern enable row level security;
 alter table public.roster_config enable row level security;
@@ -246,6 +251,9 @@ create table if not exists public.shifts (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+-- IMPORTANT MIGRATION: if shifts existed already, ensure notes column exists
+alter table public.shifts add column if not exists notes text;
 
 alter table public.shifts drop constraint if exists shifts_shift_type_check;
 alter table public.shifts add constraint shifts_shift_type_check check (shift_type in ('day','night'));
@@ -270,8 +278,12 @@ create table if not exists public.ot_requests (
   unique (shift_id, user_id)
 );
 
+-- IMPORTANT MIGRATION: if ot_requests existed already, ensure notes column exists
+alter table public.ot_requests add column if not exists notes text;
+
 alter table public.ot_requests drop constraint if exists ot_requests_notes_len_check;
-alter table public.ot_requests add constraint ot_requests_notes_len_check check (notes is null or length(notes) <= 500);
+alter table public.ot_requests add constraint ot_requests_notes_len_check
+  check (notes is null or length(notes) <= 500);
 
 -- FKs to profiles for embedding
 DO $$
@@ -380,8 +392,7 @@ alter table public.shifts enable row level security;
 alter table public.ot_requests enable row level security;
 alter table public.ot_shift_counts enable row level security;
 
--- Policies (minimal; keep your existing policies if already configured)
--- Profiles
+-- Policies (your original set)
 DROP POLICY IF EXISTS profiles_select_own ON public.profiles;
 CREATE POLICY profiles_select_own ON public.profiles FOR SELECT USING (auth.uid() = id);
 DROP POLICY IF EXISTS profiles_select_manager_all ON public.profiles;
@@ -391,7 +402,6 @@ CREATE POLICY profiles_update_own ON public.profiles FOR UPDATE USING (auth.uid(
 DROP POLICY IF EXISTS profiles_update_manager_all ON public.profiles;
 CREATE POLICY profiles_update_manager_all ON public.profiles FOR UPDATE USING (public.is_manager(auth.uid())) WITH CHECK (public.is_manager(auth.uid()));
 
--- App settings
 DROP POLICY IF EXISTS app_settings_select_auth ON public.app_settings;
 CREATE POLICY app_settings_select_auth ON public.app_settings FOR SELECT USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS app_settings_update_manager ON public.app_settings;
@@ -399,7 +409,6 @@ CREATE POLICY app_settings_update_manager ON public.app_settings FOR INSERT WITH
 DROP POLICY IF EXISTS app_settings_update_manager2 ON public.app_settings;
 CREATE POLICY app_settings_update_manager2 ON public.app_settings FOR UPDATE USING (public.is_manager(auth.uid())) WITH CHECK (public.is_manager(auth.uid()));
 
--- Shifts
 DROP POLICY IF EXISTS shifts_select_approved ON public.shifts;
 CREATE POLICY shifts_select_approved ON public.shifts FOR SELECT USING (public.is_employee(auth.uid()));
 DROP POLICY IF EXISTS shifts_insert_manager ON public.shifts;
@@ -407,7 +416,6 @@ CREATE POLICY shifts_insert_manager ON public.shifts FOR INSERT WITH CHECK (publ
 DROP POLICY IF EXISTS shifts_update_manager ON public.shifts;
 CREATE POLICY shifts_update_manager ON public.shifts FOR UPDATE USING (public.is_manager(auth.uid())) WITH CHECK (public.is_manager(auth.uid()));
 
--- OT requests
 DROP POLICY IF EXISTS ot_select_own ON public.ot_requests;
 CREATE POLICY ot_select_own ON public.ot_requests FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS ot_select_manager ON public.ot_requests;
@@ -425,11 +433,9 @@ CREATE POLICY ot_update_own_notes ON public.ot_requests FOR UPDATE USING (auth.u
 DROP POLICY IF EXISTS ot_update_manager ON public.ot_requests;
 CREATE POLICY ot_update_manager ON public.ot_requests FOR UPDATE USING (public.is_manager(auth.uid())) WITH CHECK (public.is_manager(auth.uid()));
 
--- Counts
 DROP POLICY IF EXISTS counts_select_approved ON public.ot_shift_counts;
 CREATE POLICY counts_select_approved ON public.ot_shift_counts FOR SELECT USING (public.is_employee(auth.uid()));
 
--- Staffing
 alter table public.user_staffing enable row level security;
 DROP POLICY IF EXISTS staff_select_own ON public.user_staffing;
 CREATE POLICY staff_select_own ON public.user_staffing FOR SELECT USING (auth.uid() = user_id);
@@ -444,12 +450,10 @@ CREATE POLICY staff_upsert_manager ON public.user_staffing FOR INSERT WITH CHECK
 DROP POLICY IF EXISTS staff_update_manager ON public.user_staffing;
 CREATE POLICY staff_update_manager ON public.user_staffing FOR UPDATE USING (public.is_manager(auth.uid())) WITH CHECK (public.is_manager(auth.uid()));
 
--- Roster
 DROP POLICY IF EXISTS roster_select_auth ON public.team_roster_pattern;
 CREATE POLICY roster_select_auth ON public.team_roster_pattern FOR SELECT USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS roster_config_select_auth ON public.roster_config;
 CREATE POLICY roster_config_select_auth ON public.roster_config FOR SELECT USING (auth.role() = 'authenticated');
 
--- Audit
 DROP POLICY IF EXISTS audit_select_manager ON public.audit_log;
 CREATE POLICY audit_select_manager ON public.audit_log FOR SELECT USING (public.is_manager(auth.uid()));
