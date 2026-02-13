@@ -16,7 +16,6 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
   const requestedCount = counts?.requested || 0
   const approvedCount = counts?.approved || 0
   const declinedCount = counts?.declined || 0
-
   const overApproved = approvedCount > (shift.spots_available || 0)
 
   const chip = (label, cls) => (
@@ -66,9 +65,7 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, o
           </button>
         </div>
 
-        {!canNotes ? (
-          <div className="mt-2 text-[11px] text-slate-500">Notes are available after you have requested a shift.</div>
-        ) : null}
+        {!canNotes ? <div className="mt-2 text-[11px] text-slate-500">Notes are available after you have requested a shift.</div> : null}
       </div>
     </div>
   )

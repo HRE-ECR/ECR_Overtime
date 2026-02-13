@@ -10,18 +10,14 @@ export default function ModifyShifts(){
   const load=async()=>{
     setLoading(true);setError('')
     const today=new Date().toISOString().slice(0,10)
-    let q=supabase.from('shifts')
-      .select('id, shift_date, shift_type, start_time, end_time, department, spots_available, shift_status, deleted_at')
-      .gte('shift_date',today)
-      .order('shift_date',{ascending:true})
-      .order('shift_type',{ascending:true})
+    let q=supabase.from('shifts').select('id, shift_date, shift_type, start_time, end_time, department, spots_available, shift_status, deleted_at')
+      .gte('shift_date',today).order('shift_date',{ascending:true}).order('shift_type',{ascending:true})
     if(!showDeleted) q=q.eq('shift_status','active')
     const {data,error:err}=await q
     if(err) setError(err.message)
     setRows(data||[])
     setLoading(false)
   }
-
   useEffect(()=>{load()},[showDeleted])
 
   const updateSlots=async(id,v)=>{

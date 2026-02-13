@@ -36,10 +36,7 @@ export default function MyShifts() {
   }
 
   useEffect(() => { load() }, [])
-
-  useEffect(() => {
-    localStorage.setItem('oh_myApprovedOnly', showApprovedOnly ? '1' : '0')
-  }, [showApprovedOnly])
+  useEffect(() => { localStorage.setItem('oh_myApprovedOnly', showApprovedOnly ? '1' : '0') }, [showApprovedOnly])
 
   const visible = useMemo(() => showApprovedOnly ? rows.filter(r => r.status === 'approved') : rows, [rows, showApprovedOnly])
 
@@ -125,13 +122,10 @@ export default function MyShifts() {
         </label>
       </div>
 
-      {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div>
-      ) : null}
+      {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
+      {loading ? <div className="mt-5 text-slate-300">Loading…</div> : null}
 
       <div className="mt-5 grid gap-3">
-        {loading ? <div className="text-slate-300">Loading…</div> : null}
-
         {!loading && visible.length === 0 ? (
           <div className="rounded-3xl bg-slate-900/40 border border-slate-800 p-6 text-slate-200">
             <div className="font-extrabold text-white">No OT requests</div>
