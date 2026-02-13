@@ -80,10 +80,12 @@ export default function ApproveOT() {
   const decide = async (reqId, status) => {
     setError('')
     const userId = (await supabase.auth.getUser()).data?.user?.id
+
     const { error: err } = await supabase
       .from('ot_requests')
       .update({ status, decided_at: new Date().toISOString(), decided_by: userId })
       .eq('id', reqId)
+
     if (err) setError(err.message)
     else load()
   }
@@ -118,6 +120,7 @@ export default function ApproveOT() {
           const list = (requestsByShift[s.id] || []).filter(r => r.status !== 'cancelled')
           const c = counts[s.id] || { requested: 0, approved: 0, declined: 0 }
           const over = c.approved > s.spots_available
+
           const niceDate = format(new Date(s.shift_date), 'EEE d MMM')
 
           return (
@@ -151,6 +154,7 @@ export default function ApproveOT() {
                             <div className="text-xs text-slate-300 mt-1">Approved by: <span className="text-slate-100 font-bold">{approverName}</span></div>
                           ) : null}
                         </div>
+
                         <div className="flex gap-2 w-full sm:w-auto">
                           <button onClick={() => decide(r.id, 'approved')} className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold text-xs">Approve</button>
                           <button onClick={() => decide(r.id, 'declined')} className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-100 font-extrabold text-xs">Decline</button>

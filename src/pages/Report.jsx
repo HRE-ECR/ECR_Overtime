@@ -90,7 +90,9 @@ export default function Report() {
     <div>
       <h1 className="text-white font-black text-2xl">Report</h1>
       <p className="text-slate-300 text-sm mt-1">Export approved overtime to CSV (Excel compatible).</p>
+
       {message ? <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div> : null}
+
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
         <div className="grid md:grid-cols-2 gap-3">
           <div>
@@ -102,7 +104,11 @@ export default function Report() {
             <input value={end} onChange={(e) => setEnd(e.target.value)} type="date" className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
           </div>
         </div>
-        <button disabled={loading} onClick={exportApproved} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">{loading ? 'Working…' : 'Export APPROVED CSV'}</button>
+
+        <button disabled={loading} onClick={exportApproved} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+          {loading ? 'Working…' : 'Export APPROVED CSV'}
+        </button>
+
         <div className="text-xs text-slate-400 mt-3">Columns: Date, Shift, Name, Team, Band, Approved by, Notes.</div>
       </div>
     </div>

@@ -19,7 +19,6 @@ export default function AvailableShifts() {
     const v = localStorage.getItem('oh_showOnlyRest')
     return v === null ? true : v === '1'
   })
-
   const [myTeam, setMyTeam] = useState('')
   const [baseDate, setBaseDate] = useState('2026-02-02')
   const [pattern, setPattern] = useState([])
@@ -277,10 +276,8 @@ export default function AvailableShifts() {
             <div className="text-xs text-slate-400 mt-1">{notesText.length}/500</div>
 
             <div className="mt-4 flex gap-2">
-              <button onClick={() => { setNotesOpen(false); setNotesShiftId(null) }}
-                className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/70 border border-slate-700 text-white font-extrabold">Cancel</button>
-              <button disabled={notesSaving} onClick={saveNotes}
-                className="flex-1 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+              <button onClick={() => { setNotesOpen(false); setNotesShiftId(null) }} className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/70 border border-slate-700 text-white font-extrabold">Cancel</button>
+              <button disabled={notesSaving} onClick={saveNotes} className="flex-1 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
                 {notesSaving ? 'Saving…' : 'Save notes'}
               </button>
             </div>

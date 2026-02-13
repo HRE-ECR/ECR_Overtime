@@ -1,12 +1,9 @@
-# OvertimeHub v3.6.3 (Notes column fix)
+# OvertimeHub v3.6.3 (Backup)
 
-## What was wrong
-If `public.ot_requests` (or `public.shifts`) already existed from an earlier build, `create table if not exists ...` does NOT add new columns.
-So when the v3.6 schema referenced `notes`, Supabase raised: `ERROR 42703: column "notes" does not exist`.
+This is a backup package of the v3.6.3 project with `.eslintrc.cjs` included.
 
-## Fix included
-This build's `supabase/schema.sql` **always adds notes columns** using `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` before any constraints/policies.
+## Why `.eslintrc.cjs` matters
+It configures ESLint (developer linting). It does not affect runtime unless `npm run lint` is executed.
 
-## Deploy
-1) Run `supabase/schema.sql` in Supabase SQL editor.
-2) Deploy your GitHub Pages project as usual.
+## Supabase
+Run `supabase/schema.sql` in Supabase SQL editor.

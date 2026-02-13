@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-const TEAMS = ['Team1','Team2','Team3','Team4']
-const BANDS = ['Band A','Band B']
+const TEAMS = ['Team1', 'Team2', 'Team3', 'Team4']
+const BANDS = ['Band A', 'Band B']
 
 function normalizeName(input) {
-  let v = (input || '').trim().replace(/\s+/g, ' ')
+  let v = (input || '').trim()
+  v = v.replace(/\s+/g, ' ')
   const m = v.match(/^([A-Za-z])\.?\s+(.+)$/)
   if (!m) return v
   const initial = m[1].toUpperCase()
   let surname = m[2].trim()
   surname = surname.split(' ').map(part =>
-    part.split('-').map(seg => seg ? seg[0].toUpperCase() + seg.slice(1).toLowerCase() : seg).join('-')
+    part.split('-').map(seg => seg.length ? seg[0].toUpperCase() + seg.slice(1).toLowerCase() : seg).join('-')
   ).join(' ')
   return `${initial}. ${surname}`
 }
@@ -44,7 +45,6 @@ export default function UserProfile() {
     ])
 
     if (pErr) setError(pErr.message)
-
     setRole(p?.role || '')
     setFullName(p?.full_name || '')
     setPhone(p?.phone || '')
@@ -124,16 +124,14 @@ export default function UserProfile() {
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-300">Team</label>
-                  <select value={team} onChange={(e) => setTeam(e.target.value)}
-                    className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
+                  <select value={team} onChange={(e) => setTeam(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
                     <option value="">(not set)</option>
                     {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-300">Band</label>
-                  <select value={band} onChange={(e) => setBand(e.target.value)}
-                    className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
+                  <select value={band} onChange={(e) => setBand(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white">
                     <option value="">(not set)</option>
                     {BANDS.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
@@ -146,8 +144,7 @@ export default function UserProfile() {
               </div>
             )}
 
-            <button disabled={saving} onClick={save}
-              className="px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+            <button disabled={saving} onClick={save} className="px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
               {saving ? 'Saving…' : 'Save profile'}
             </button>
           </div>
