@@ -22,12 +22,14 @@ import ShiftHistory from './pages/ShiftHistory'
 
 import InstallPrompt from './components/InstallPrompt'
 
-function TopNav({ user, profile, onSignOut }) {
+function TopNav({ user, profile, onSignOut, testMode }) {
   const linkClass = ({ isActive }) =>
     `px-3 py-2 rounded-xl text-sm font-semibold ${isActive ? 'bg-navy-800 text-white' : 'text-slate-200 hover:bg-slate-800/60'}`
 
   const isApproved = user && profile?.role && profile.role !== 'new_user'
   const isManager = profile?.role === 'manager'
+
+  const showEmployeeTabs = !isManager || testMode
 
   return (
     <div className="sticky top-0 z-40 backdrop-blur bg-navy-950/85 border-b border-slate-800">
@@ -46,8 +48,8 @@ function TopNav({ user, profile, onSignOut }) {
 
       {isApproved ? (
         <div className="max-w-4xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
-          <NavLink to="/" className={linkClass} end>Available Shifts</NavLink>
-          <NavLink to="/my" className={linkClass}>My Shifts</NavLink>
+          {showEmployeeTabs ? <NavLink to="/" className={linkClass} end>Available Shifts</NavLink> : null}
+          {showEmployeeTabs ? <NavLink to="/my" className={linkClass}>My Shifts</NavLink> : null}
           <NavLink to="/profile" className={linkClass}>User Profile</NavLink>
           {isManager ? (
             <>
@@ -78,6 +80,7 @@ function ConfigErrorScreen() {
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [testMode, setTestMode] = useState(false)
   const navigate = useNavigate()
 
   const user = session?.user
@@ -88,6 +91,19 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
     return () => sub?.subscription?.unsubscribe?.()
+  }, [])
+
+  // Load global app settings (test mode)
+  useEffect(() => {
+    let ignore = false
+    async function loadSettings() {
+      if (!isSupabaseReady) return
+      const { data } = await supabase.from('app_settings').select('test_mode_enabled').eq('id', 1).maybeSingle()
+      if (ignore) return
+      setTestMode(Boolean(data?.test_mode_enabled))
+    }
+    loadSettings()
+    return () => { ignore = true }
   }, [])
 
   useEffect(() => {
@@ -123,6 +139,7 @@ export default function App() {
   }
 
   const isManager = profile?.role === 'manager'
+  const showEmployeeTabs = !isManager || testMode
 
   const authedRoutes = useMemo(() => {
     if (!profile?.role || profile.role === 'new_user') {
@@ -135,21 +152,23 @@ export default function App() {
 
     return (
       <Routes>
-        <Route path="/" element={<AvailableShifts />} />
-        <Route path="/my" element={<MyShifts />} />
+        {/* Employee tabs (hidden for managers unless test mode) */}
+        <Route path="/" element={showEmployeeTabs ? <AvailableShifts /> : <UserManagement testMode={testMode} onTestModeChange={setTestMode} />} />
+        <Route path="/my" element={showEmployeeTabs ? <MyShifts /> : <UserManagement testMode={testMode} onTestModeChange={setTestMode} />} />
+
         <Route path="/profile" element={<UserProfile />} />
 
         <Route path="/planner" element={isManager ? <ShiftPlanner /> : <AvailableShifts />} />
         <Route path="/modify" element={isManager ? <ModifyShifts /> : <AvailableShifts />} />
         <Route path="/approve" element={isManager ? <ApproveOT /> : <AvailableShifts />} />
-        <Route path="/users" element={isManager ? <UserManagement /> : <AvailableShifts />} />
+        <Route path="/users" element={isManager ? <UserManagement testMode={testMode} onTestModeChange={setTestMode} /> : <AvailableShifts />} />
         <Route path="/report" element={isManager ? <Report /> : <AvailableShifts />} />
         <Route path="/history" element={isManager ? <ShiftHistory /> : <AvailableShifts />} />
 
-        <Route path="*" element={<AvailableShifts />} />
+        <Route path="*" element={showEmployeeTabs ? <AvailableShifts /> : <UserManagement testMode={testMode} onTestModeChange={setTestMode} />} />
       </Routes>
     )
-  }, [profile, user, isManager])
+  }, [profile, user, isManager, testMode, showEmployeeTabs])
 
   const publicRoutes = (
     <Routes>
@@ -165,11 +184,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-navy-950 via-slate-950 to-slate-950">
-      <TopNav user={user} profile={profile} onSignOut={onSignOut} />
+      <TopNav user={user} profile={profile} onSignOut={onSignOut} testMode={testMode} />
       <InstallPrompt />
       <main className="max-w-4xl mx-auto px-4 py-5">{user ? authedRoutes : publicRoutes}</main>
       <footer className="safe-bottom max-w-4xl mx-auto px-4 pb-8 text-xs text-slate-400">
-        <div className="border-t border-slate-800 pt-4">v3.5 · Phone fix · Profile embed fix · Employee team/band · Approved-only toggle</div>
+        <div className="border-t border-slate-800 pt-4">v3.6 · Notes · Report columns · Cleanup · Test mode</div>
       </footer>
     </div>
   )

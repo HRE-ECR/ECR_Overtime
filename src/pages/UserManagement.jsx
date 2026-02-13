@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 const TEAMS = ['Team1', 'Team2', 'Team3', 'Team4']
 const BANDS = ['Band A', 'Band B']
 
-export default function UserManagement() {
+export default function UserManagement({ testMode, onTestModeChange }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [users, setUsers] = useState([])
@@ -22,15 +22,13 @@ export default function UserManagement() {
 
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('id, full_name, role, department, created_at')
+      .select('id, full_name, role, created_at')
       .order('full_name', { ascending: true })
 
     if (err) setError(err.message)
     setUsers(data || [])
 
-    if (!selectedId && (data || []).length) {
-      setSelectedId(data[0].id)
-    }
+    if (!selectedId && (data || []).length) setSelectedId(data[0].id)
 
     setLoading(false)
   }
@@ -73,12 +71,24 @@ export default function UserManagement() {
     return `${name} (${u.role})`
   }
 
+  const saveTestMode = async (value) => {
+    setError('')
+    const { error: err } = await supabase
+      .from('app_settings')
+      .upsert({ id: 1, test_mode_enabled: value }, { onConflict: 'id' })
+
+    if (err) setError(err.message)
+    else onTestModeChange?.(value)
+  }
+
   return (
     <div>
       <h1 className="text-white font-black text-2xl">User Management</h1>
-      <p className="text-slate-300 text-sm mt-1">Change roles and set Team/Band (for roster filtering and approvals).</p>
+      <p className="text-slate-300 text-sm mt-1">Change roles and set Team/Band.</p>
 
-      {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div>
+      ) : null}
 
       <div className="mt-5 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-card p-5">
         <div className="grid md:grid-cols-2 gap-4">
@@ -124,6 +134,21 @@ export default function UserManagement() {
           </div>
 
           <button disabled={loading || !selectedId} onClick={saveStaffing} className="mt-3 px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">Save team & band</button>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-5">
+          <div className="text-white font-extrabold">Test Functions</div>
+          <div className="text-xs text-slate-400 mt-1">Enable to show Available Shifts and My shifts tabs to allow for testing.</div>
+
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-3">
+            <div className="text-sm text-slate-200">Test mode is <span className={testMode ? 'text-emerald-200 font-bold' : 'text-slate-300 font-bold'}>{testMode ? 'ON' : 'OFF'}</span></div>
+            <label className="inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only" checked={testMode} onChange={(e) => saveTestMode(e.target.checked)} />
+              <div className={`w-14 h-8 rounded-full border ${testMode ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-slate-800/70 border-slate-700'} relative transition`}>
+                <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition ${testMode ? 'translate-x-6' : ''}`}></div>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </div>

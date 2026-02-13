@@ -1,16 +1,22 @@
-# OvertimeHub v3.5 (Full)
+# OvertimeHub v3.6 (Full)
 
-## Fixes
-- Fixes "profiles.phone does not exist" by adding migration to create `profiles.phone`.
-- Fixes Approve OT embed ambiguity by using explicit relationships to profiles and fetching user staffing separately.
-
-## New changes
-- Employees can set their own Team and Band in User Profile.
-- My Shifts has a toggle to show only approved requests.
-- User Management dropdown displays: `J. Surname (employee)`.
+## Changes in this build
+- Approve OT date format improved to `Mon 2 Feb`.
+- My Shifts:
+  - Approved tiles are green, declined/cancelled tiles red.
+  - Button to hide ALL declined/cancelled from view (archives them).
+- Available Shifts:
+  - Notes button (after requesting) opens modal to save notes (max 500 chars) to Supabase.
+- Reports:
+  - Export APPROVED CSV with columns: Date, Shift, Name, Team, Band, Approved by, Notes.
+- Data retention:
+  - Adds `cleanup_old_shift_data(50)` function to delete shift-related data older than 50 days.
+  - Attempts to schedule daily cleanup via pg_cron if available.
+- Test Functions:
+  - Toggle in User Management to show/hide Available Shifts and My Shifts tabs for managers.
 
 ## Supabase
 Run `supabase/schema.sql` in Supabase SQL Editor.
 
 ## Deploy
-Upload to GitHub repo and push to main. GitHub Actions will deploy to Pages.
+Push this folder to your GitHub repo and GitHub Actions will deploy.

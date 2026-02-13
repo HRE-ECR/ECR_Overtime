@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const TEAMS = ['Team1', 'Team2', 'Team3', 'Team4']
@@ -82,7 +82,6 @@ export default function UserProfile() {
       return
     }
 
-    // Employees can set their own team/band. Managers do not need.
     if (role === 'employee') {
       const { error: sErr } = await supabase
         .from('user_staffing')
@@ -103,7 +102,7 @@ export default function UserProfile() {
   return (
     <div>
       <h1 className="text-white font-black text-2xl">User Profile</h1>
-      <p className="text-slate-300 text-sm mt-1">Set your display name (used in approvals and reports) and an optional contact number.</p>
+      <p className="text-slate-300 text-sm mt-1">Set your display name and optional contact number. Employees can also set Team and Band.</p>
 
       {error ? <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-100">{error}</div> : null}
       {message ? <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-100">{message}</div> : null}
@@ -115,7 +114,6 @@ export default function UserProfile() {
               <label className="text-xs font-bold text-slate-300">Display name (format: J. Surname)</label>
               <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="J. Surname" type="text"
                 className="mt-1 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white" />
-              <div className="text-xs text-slate-400 mt-1">Tip: we’ll auto-format capitalization when you save.</div>
             </div>
 
             <div>

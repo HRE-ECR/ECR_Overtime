@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { format } from 'date-fns'
 
 function shiftLabel(type) {
   if (type === 'day') return '☀️ Day'
@@ -56,7 +57,6 @@ export default function ApproveOT() {
     const countMap = {}
     for (const row of (cntData || [])) countMap[row.shift_id] = row
 
-    // Load staffing for visible request user_ids
     const ids = Array.from(new Set((reqData || []).map(r => r.user_id).filter(Boolean)))
     let sMap = {}
     if (ids.length) {
@@ -65,11 +65,8 @@ export default function ApproveOT() {
         .select('user_id, team, band')
         .in('user_id', ids)
 
-      if (stErr) {
-        setError(stErr.message)
-      } else {
-        for (const row of (staff || [])) sMap[row.user_id] = row
-      }
+      if (stErr) setError(stErr.message)
+      else for (const row of (staff || [])) sMap[row.user_id] = row
     }
 
     setShifts(shiftData || [])
@@ -125,11 +122,14 @@ export default function ApproveOT() {
           const c = counts[s.id] || { requested: 0, approved: 0, declined: 0 }
           const over = c.approved > s.spots_available
 
+          const d = new Date(s.shift_date)
+          const niceDate = format(d, 'EEE d MMM')
+
           return (
             <div key={s.id} className="rounded-3xl bg-slate-900/50 border border-slate-800 p-4 shadow-card">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-white font-extrabold">{s.shift_date} · {shiftLabel(s.shift_type)} · {s.department}</div>
+                  <div className="text-white font-extrabold">{niceDate} · {shiftLabel(s.shift_type)} · {s.department}</div>
                   <div className="text-sm text-slate-300 mt-1">{s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)}{s.shift_type==='night' ? ' (+1)' : ''}</div>
                   <div className="text-xs text-slate-400 mt-2">
                     Slots: <span className="text-slate-200 font-bold">{s.spots_available}</span> ·

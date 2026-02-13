@@ -7,9 +7,9 @@ function shiftLabel(type) {
   return type
 }
 
-export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel }) {
+export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel, onNotes }) {
   const date = new Date(shift.shift_date)
-  const title = `${format(date, 'EEE dd MMM')} · ${shiftLabel(shift.shift_type)}`
+  const title = `${format(date, 'EEE d MMM')} · ${shiftLabel(shift.shift_type)}`
   const timeRange = `${shift.start_time?.slice(0,5)}–${shift.end_time?.slice(0,5)}${shift.shift_type === 'night' ? ' (+1)' : ''}`
 
   const status = myReq?.status || 'none'
@@ -23,6 +23,8 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
   const chip = (label, cls) => (
     <span className={`px-3 py-1 rounded-full border text-xs font-black whitespace-nowrap ${cls}`}>{label}</span>
   )
+
+  const canNotes = Boolean(onNotes) && status !== 'none'
 
   return (
     <div className="rounded-3xl bg-slate-900/50 border border-slate-800 shadow-card overflow-hidden">
@@ -44,7 +46,7 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
             {status === 'approved' ? chip('APPROVED', 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100') : null}
             {status === 'requested' ? chip('REQUESTED', 'border-sky-500/30 bg-sky-500/10 text-sky-100') : null}
             {status === 'declined' ? chip('DECLINED', 'border-rose-500/30 bg-rose-500/10 text-rose-100') : null}
-            {status === 'cancelled' ? chip('CANCELLED', 'border-slate-600/50 bg-slate-700/20 text-slate-200') : null}
+            {status === 'cancelled' ? chip('CANCELLED', 'border-rose-500/30 bg-rose-500/10 text-rose-100') : null}
             {status === 'none' ? chip('NOT REQUESTED', 'border-slate-700 text-slate-200') : null}
           </div>
         </div>
@@ -53,15 +55,26 @@ export default function ShiftCard({ shift, myReq, counts, onRequest, onCancel })
           <div className="mt-3 text-sm text-slate-200 bg-slate-950/40 border border-slate-800 rounded-2xl p-3">{shift.notes}</div>
         ) : null}
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           {status === 'none' || status === 'declined' || status === 'cancelled' ? (
-            <button onClick={onRequest} className="flex-1 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold">Request OT</button>
-          ) : null}
+            <button onClick={onRequest} className="py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold">Request OT</button>
+          ) : (
+            <button onClick={onCancel} className="py-3 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold">Cancel Request</button>
+          )}
 
-          {(status === 'requested' || status === 'approved') ? (
-            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold">Cancel Request</button>
-          ) : null}
+          <button
+            onClick={() => canNotes && onNotes?.()}
+            disabled={!canNotes}
+            className={`py-3 rounded-2xl border font-extrabold ${canNotes ? 'bg-slate-800/70 border-slate-700 text-white hover:bg-slate-700' : 'bg-slate-950/20 border-slate-800 text-slate-500 cursor-not-allowed'}`}
+            title={canNotes ? 'Add / edit notes for this shift request' : 'Request OT first to add notes'}
+          >
+            Notes
+          </button>
         </div>
+
+        {!canNotes ? (
+          <div className="mt-2 text-[11px] text-slate-500">Notes are available after you have requested a shift.</div>
+        ) : null}
       </div>
     </div>
   )

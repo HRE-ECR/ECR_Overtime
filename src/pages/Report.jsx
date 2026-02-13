@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { format } from 'date-fns'
 
 function downloadText(filename, text) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
@@ -11,9 +12,7 @@ function downloadText(filename, text) {
   URL.revokeObjectURL(url)
 }
 
-function toCsv(rows) {
-  if (!rows.length) return ''
-  const headers = Object.keys(rows[0])
+function toCsv(rows, headers) {
   const escape = (v) => {
     const s = String(v ?? '')
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
@@ -29,13 +28,16 @@ export default function Report() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const exportApprovedGrouped = async () => {
+  const exportApproved = async () => {
     setMessage('')
     setLoading(true)
 
     const { data, error } = await supabase
       .from('ot_requests')
-      .select('status, profile:profiles!ot_requests_user_id_profiles_fkey(full_name), shift:shifts(shift_date, shift_type)')
+      .select(`notes, status, decided_by,
+               requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
+               approver:profiles!ot_requests_decided_by_profiles_fkey(full_name),
+               shift:shifts(shift_date, shift_type)`)
       .eq('status', 'approved')
 
     if (error) {
@@ -44,33 +46,82 @@ export default function Report() {
       return
     }
 
-    const filtered = (data || []).filter((r) => {
+    const filtered = (data || []).filter(r => {
       const d = r.shift?.shift_date
       return d && d >= start && d <= end
     })
 
-    const groups = {}
-    for (const r of filtered) {
-      const key = `${r.shift.shift_date}|${r.shift.shift_type}`
-      groups[key] = groups[key] || { date: r.shift.shift_date, shift: r.shift.shift_type, people: [] }
-      const name = r.profile?.full_name || 'Unknown'
-      if (!groups[key].people.includes(name)) groups[key].people.push(name)
+    // Load staffing for requesters
+    const ids = Array.from(new Set(filtered.map(r => r.requester ? r.requester.id : null).filter(Boolean)))
+    // However requester embed doesn't include id; use decided structure: fallback to separate query based on auth? We'll instead re-fetch user_ids.
+    // Better: fetch again using ot_requests with user_id included.
+
+    const { data: baseReqs, error: bErr } = await supabase
+      .from('ot_requests')
+      .select(`id, user_id, notes, status,
+               requester:profiles!ot_requests_user_id_profiles_fkey(full_name),
+               approver:profiles!ot_requests_decided_by_profiles_fkey(full_name),
+               shift:shifts(shift_date, shift_type)`)
+      .eq('status','approved')
+
+    if (bErr) {
+      setMessage(bErr.message)
+      setLoading(false)
+      return
     }
 
-    const orderType = (t) => (t === 'day' ? 0 : 1)
-    const rows = Object.values(groups)
-      .sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : orderType(a.shift) - orderType(b.shift)))
-      .map(g => ({ date: g.date, shift: g.shift, approved_people: g.people.join('; ') }))
+    const inRange = (baseReqs || []).filter(r => {
+      const d = r.shift?.shift_date
+      return d && d >= start && d <= end
+    })
 
-    downloadText(`overtime_report_approved_${start}_to_${end}.csv`, toCsv(rows))
-    setMessage(`Exported APPROVED grouped: ${rows.length} lines.`)
+    const uids = Array.from(new Set(inRange.map(r => r.user_id).filter(Boolean)))
+    let staffingMap = {}
+    if (uids.length) {
+      const { data: staff, error: sErr } = await supabase
+        .from('user_staffing')
+        .select('user_id, team, band')
+        .in('user_id', uids)
+      if (sErr) {
+        setMessage(sErr.message)
+        setLoading(false)
+        return
+      }
+      for (const row of (staff || [])) staffingMap[row.user_id] = row
+    }
+
+    const headers = ['Date','Shift','Name','Team','Band','Approved by','Notes']
+
+    const rows = inRange.map(r => {
+      const d = new Date(r.shift.shift_date)
+      const dateText = format(d, 'EEE d MMM yyyy')
+      const shiftText = r.shift.shift_type === 'day' ? 'Day' : 'Night'
+      const name = r.requester?.full_name || ''
+      const staff = staffingMap[r.user_id] || {}
+      const team = staff.team || ''
+      const band = staff.band || ''
+      const approvedBy = r.approver?.full_name || ''
+      const notes = (r.notes || '').slice(0, 500)
+      return {
+        'Date': dateText,
+        'Shift': shiftText,
+        'Name': name,
+        'Team': team,
+        'Band': band,
+        'Approved by': approvedBy,
+        'Notes': notes
+      }
+    })
+
+    downloadText(`overtime_report_approved_${start}_to_${end}.csv`, toCsv(rows, headers))
+    setMessage(`Exported ${rows.length} approved rows.`)
     setLoading(false)
   }
 
   return (
     <div>
       <h1 className="text-white font-black text-2xl">Report</h1>
-      <p className="text-slate-300 text-sm mt-1">Export approved overtime grouped by date + shift.</p>
+      <p className="text-slate-300 text-sm mt-1">Export approved overtime to CSV (Excel compatible).</p>
 
       {message ? <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 text-slate-100">{message}</div> : null}
 
@@ -86,11 +137,11 @@ export default function Report() {
           </div>
         </div>
 
-        <button disabled={loading} onClick={exportApprovedGrouped} className="mt-4 px-4 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 font-extrabold disabled:opacity-60">
-          {loading ? 'Working…' : 'Export APPROVED (Grouped)'}
+        <button disabled={loading} onClick={exportApproved} className="mt-4 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+          {loading ? 'Working…' : 'Export APPROVED CSV'}
         </button>
 
-        <div className="text-xs text-slate-400 mt-3">One row per date+shift. Approved names separated by “;”.</div>
+        <div className="text-xs text-slate-400 mt-3">Columns: Date, Shift, Name, Team, Band, Approved by, Notes.</div>
       </div>
     </div>
   )

@@ -23,6 +23,12 @@ export default function AvailableShifts() {
   const [baseDate, setBaseDate] = useState('2026-02-02')
   const [pattern, setPattern] = useState([])
 
+  // Notes modal
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [notesShiftId, setNotesShiftId] = useState(null)
+  const [notesText, setNotesText] = useState('')
+  const [notesSaving, setNotesSaving] = useState(false)
+
   const myReqByShift = useMemo(() => {
     const map = {}
     for (const r of myRequests) map[r.shift_id] = r
@@ -68,7 +74,7 @@ export default function AvailableShifts() {
         .order('shift_date', { ascending: true })
         .order('shift_type', { ascending: true }),
       supabase.from('ot_requests')
-        .select('id, shift_id, user_id, status, requested_at, decided_at, archived')
+        .select('id, shift_id, user_id, status, requested_at, decided_at, archived, notes')
         .eq('user_id', userId)
         .eq('archived', false),
       supabase.from('ot_shift_counts')
@@ -169,6 +175,39 @@ export default function AvailableShifts() {
     else load()
   }
 
+  const openNotes = (shiftId) => {
+    const req = myReqByShift[shiftId]
+    if (!req) {
+      setError('Request the shift first to add notes.')
+      return
+    }
+    setNotesShiftId(shiftId)
+    setNotesText(req.notes || '')
+    setNotesOpen(true)
+  }
+
+  const saveNotes = async () => {
+    setError('')
+    if (!notesShiftId) return
+    const userId = (await supabase.auth.getUser()).data?.user?.id
+
+    // Limit to 500 chars
+    const trimmed = (notesText || '').slice(0, 500)
+
+    setNotesSaving(true)
+    const { error: err } = await supabase
+      .from('ot_requests')
+      .update({ notes: trimmed })
+      .eq('shift_id', notesShiftId)
+      .eq('user_id', userId)
+
+    if (err) setError(err.message)
+    setNotesSaving(false)
+    setNotesOpen(false)
+    setNotesShiftId(null)
+    load()
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -220,9 +259,36 @@ export default function AvailableShifts() {
             counts={counts[s.id]}
             onRequest={() => requestOt(s.id)}
             onCancel={() => cancelRequest(s.id)}
+            onNotes={() => openNotes(s.id)}
           />
         ))}
       </div>
+
+      {/* Notes modal */}
+      {notesOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-700 shadow-card p-5">
+            <div className="text-white font-black text-xl">Notes</div>
+            <div className="text-xs text-slate-400 mt-1">Max 500 characters. Saved to Supabase and included in reports.</div>
+
+            <textarea
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value.slice(0, 500))}
+              rows={6}
+              className="mt-3 w-full px-4 py-3 rounded-2xl bg-slate-950/40 border border-slate-700 text-white"
+              placeholder="Enter notes…"
+            />
+            <div className="text-xs text-slate-400 mt-1">{notesText.length}/500</div>
+
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => { setNotesOpen(false); setNotesShiftId(null) }} className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/70 border border-slate-700 text-white font-extrabold">Cancel</button>
+              <button disabled={notesSaving} onClick={saveNotes} className="flex-1 px-4 py-3 rounded-2xl bg-white text-navy-900 font-extrabold disabled:opacity-60">
+                {notesSaving ? 'Saving…' : 'Save notes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

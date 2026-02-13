@@ -83,14 +83,39 @@ export default function MyShifts() {
     else load()
   }
 
+  const hideDeclinedCancelled = async () => {
+    setError('')
+    const userId = (await supabase.auth.getUser()).data?.user?.id
+
+    if (!confirm('Hide ALL declined and cancelled items from your list?')) return
+
+    const { error: err } = await supabase
+      .from('ot_requests')
+      .update({ archived: true })
+      .eq('user_id', userId)
+      .in('status', ['declined', 'cancelled'])
+
+    if (err) setError(err.message)
+    else load()
+  }
+
+  const tileClass = (status) => {
+    if (status === 'approved') return 'border-emerald-500/30 bg-emerald-500/10'
+    if (status === 'declined' || status === 'cancelled') return 'border-rose-500/30 bg-rose-500/10'
+    return 'border-slate-800 bg-slate-900/50'
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-white font-black text-2xl">My OT Requests</h1>
-          <p className="text-slate-300 text-sm mt-1">Cancel (requested/approved) and hide past items from your list.</p>
+          <p className="text-slate-300 text-sm mt-1">Cancel (requested/approved) and hide items from your list.</p>
         </div>
-        <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
+        <div className="flex gap-2">
+          <button onClick={hideDeclinedCancelled} className="px-4 py-3 rounded-2xl bg-rose-500/15 border border-rose-500/25 text-rose-100 font-extrabold text-sm">Hide declined/cancelled</button>
+          <button onClick={load} className="px-4 py-3 rounded-2xl bg-slate-800/70 hover:bg-slate-700 font-extrabold text-sm">Refresh</button>
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-3 flex items-center justify-between gap-3">
@@ -123,7 +148,7 @@ export default function MyShifts() {
         {visible.map((r) => {
           const s = r.shift
           const date = s ? new Date(s.shift_date) : null
-          const title = s ? `${format(date, 'EEE dd MMM')} · ${shiftLabel(s.shift_type)} · ${s.department}` : r.shift_id
+          const title = s ? `${format(date, 'EEE d MMM')} · ${shiftLabel(s.shift_type)} · ${s.department}` : r.shift_id
           const timeRange = s ? `${s.start_time?.slice(0,5)}–${s.end_time?.slice(0,5)}${s.shift_type==='night' ? ' (+1)' : ''}` : ''
           const status = r.status
           const statusLabel = (status || '').toUpperCase()
@@ -132,14 +157,14 @@ export default function MyShifts() {
           const isPast = s?.shift_date ? (s.shift_date < todayIso) : false
 
           return (
-            <div key={r.id} className="rounded-3xl bg-slate-900/50 border border-slate-800 p-4 shadow-card">
+            <div key={r.id} className={`rounded-3xl border p-4 shadow-card ${tileClass(status)}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <div className="text-white font-extrabold">{title}</div>
-                  <div className="text-sm text-slate-300 mt-1">{timeRange}</div>
+                  <div className="text-sm text-slate-200/90 mt-1">{timeRange}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-black text-slate-200">{statusLabel}</div>
+                  <div className="text-xs font-black text-white">{statusLabel}</div>
                   <div className="mt-2 flex flex-col gap-2 items-end">
                     {canCancel ? (
                       <button onClick={() => cancel(r.shift_id, status)} className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-100 font-extrabold text-xs">Cancel</button>
@@ -148,7 +173,7 @@ export default function MyShifts() {
                       <button onClick={() => archive(r.shift_id)} className="px-3 py-2 rounded-xl bg-slate-700/30 border border-slate-600/40 text-slate-100 font-extrabold text-xs">Hide from history</button>
                     ) : null}
                   </div>
-                  {!isPast ? <div className="mt-1 text-[11px] text-slate-400">Hide only after shift date.</div> : null}
+                  {!isPast ? <div className="mt-1 text-[11px] text-slate-200/70">Hide only after shift date.</div> : null}
                 </div>
               </div>
             </div>
