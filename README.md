@@ -1,9 +1,19 @@
-# Fix: column "notes" does not exist
+# OvertimeHub v3.6 (FIXED)
 
-This error appears when your app/schema references `ot_requests.notes` but the column was never added (because the table already existed).
+## What’s fixed
+- Supabase SQL error: `syntax error at or near "select"` on the `cron.schedule(...)` line.
 
-## Quick fix
-Run the SQL in `supabase/schema.sql`.
+### Why it happened
+The old schema used nested dollar quoting: a `DO $$ ... $$;` block containing `$$select ...$$`.
+Postgres treats the inner `$$` as the end of the outer string, then sees a raw `select` token -> syntax error.
 
-## Full build note
-This zip is provided to deliver the schema fix. If you need me to re-issue the entire v3.6 project bundle with the fix merged, tell me and upload your current repo zip (or paste your current schema.sql) so I can rebuild without losing any files.
+### What changed
+The schedule command is now passed as a normal string:
+
+```sql
+PERFORM cron.schedule('oh_cleanup_old_shift_data', '0 3 * * *', 'select public.cleanup_old_shift_data(50);');
+```
+
+## Deploy
+1. Run `supabase/schema.sql` in Supabase SQL Editor.
+2. Push this repo to GitHub and let Actions deploy Pages.

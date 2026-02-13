@@ -22,7 +22,6 @@ export default function InstallPrompt() {
   if (!show) return null
 
   const primaryText = deferredPrompt ? 'Add to Home Screen' : (isIOS() ? 'Install on iPhone/iPad' : 'Install')
-
   const handleInstall = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt()
