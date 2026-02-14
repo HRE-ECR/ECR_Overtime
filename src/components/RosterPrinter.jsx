@@ -21,37 +21,56 @@ export default function RosterPrinter({ userTeam, fullName }) {
         return
       }
 
-      // Fetch roster pattern and config
-      const [{ data: pattern, error: patternErr }, { data: config, error: configErr }] = await Promise.all([
-        supabase
-          .from('team_roster_pattern')
-          .select('day_index, roster_type, start_time, end_time')
-          .eq('team', userTeam)
-          .order('day_index', { ascending: true }),
-        supabase
-          .from('roster_config')
-          .select('base_date')
-          .eq('id', 1)
-          .single()
-      ])
+      // Fetch roster pattern and config - Fixed error handling
+      const patternResult = await supabase
+        .from('team_roster_pattern')
+        .select('day_index, roster_type, start_time, end_time')
+        .eq('team', userTeam)
+        .order('day_index', { ascending: true })
 
-      if (patternErr || configErr) {
-        setError('Failed to fetch roster data.')
+      const configResult = await supabase
+        .from('roster_config')
+        .select('base_date')
+        .eq('id', 1)
+        .single()
+
+      // Check for errors separately
+      if (patternResult.error) {
+        console.error('Pattern error:', patternResult.error)
+        setError(`Failed to fetch roster pattern: ${patternResult.error.message}`)
+        setGenerating(false)
+        return
+      }
+
+      if (configResult.error) {
+        console.error('Config error:', configResult.error)
+        setError(`Failed to fetch roster config: ${configResult.error.message}`)
+        setGenerating(false)
+        return
+      }
+
+      const pattern = patternResult.data || []
+      const config = configResult.data
+
+      if (!config) {
+        setError('Roster configuration not found.')
+        setGenerating(false)
+        return
+      }
+
+      if (!pattern || pattern.length === 0) {
+        setError(`No roster pattern found for ${userTeam}. Please check your team assignment.`)
         setGenerating(false)
         return
       }
 
       const baseDate = new Date(config.base_date)
       const currentYear = new Date().getFullYear()
-      const startDate = new Date(currentYear, 0, 1)
-      const endDate = new Date(currentYear, 11, 31)
 
       // Create HTML content for PDF
       const htmlContent = generateHTML(
         pattern,
         baseDate,
-        startDate,
-        endDate,
         userTeam,
         fullName
       )
@@ -69,6 +88,7 @@ export default function RosterPrinter({ userTeam, fullName }) {
 
       setGenerating(false)
     } catch (err) {
+      console.error('Error generating PDF:', err)
       setError('Error generating PDF: ' + err.message)
       setGenerating(false)
     }
@@ -123,7 +143,7 @@ export default function RosterPrinter({ userTeam, fullName }) {
 /**
  * Generates the HTML structure for the roster calendar
  */
-function generateHTML(pattern, baseDate, startDate, endDate, team, fullName) {
+function generateHTML(pattern, baseDate, team, fullName) {
   const rosterTypeInfo = {
     'day': { color: '#FCD34D', name: 'Day' },
     'night': { color: '#3B82F6', name: 'Night' },
@@ -156,7 +176,7 @@ function generateHTML(pattern, baseDate, startDate, endDate, team, fullName) {
         .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border-radius: 3px; color: #1e293b; border: 1px solid #cbd5e1; }
         .day.empty { background: white; border: none; }
-        .day.today { font-weight: 900; font-size: 11px; }
+        .day.today { font-weight: 900; font-size: 11px; border: 2px solid #1e293b; }
       </style>
     </head>
     <body>
