@@ -225,7 +225,7 @@ values
   ('Team4', 22, 'night', '19:00'::time, '06:00'::time),
   ('Team4', 23, 'night', '19:00'::time, '06:00'::time),
   ('Team4', 24, 'night', '19:00'::time, '06:00'::time),
-  ('Team4', 25, 'night', '19:00'::time, '06:00'::time),
+  ('Team4', 25, 'rest', null::time, null::time),
   ('Team4', 26, 'rest', null::time, null::time),
   ('Team4', 27, 'rest', null::time, null::time)
 on conflict (team, day_index)
