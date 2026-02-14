@@ -78,7 +78,7 @@ export default function RosterPrinter({ userTeam, fullName }) {
 
       // PDF options for A3 size
       const options = {
-        margin: 10,
+        margin: 5,
         filename: `${fullName || 'Roster'}_${currentYear}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
@@ -162,22 +162,22 @@ function generateHTML(pattern, baseDate, team, fullName) {
       <meta charset="UTF-8">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 20px; background: white; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 28px; color: #1e293b; margin-bottom: 5px; }
-        .header p { font-size: 14px; color: #64748b; margin-bottom: 15px; }
-        .legend { display: flex; gap: 30px; justify-content: center; margin-bottom: 20px; font-size: 13px; }
-        .legend-item { display: flex; align-items: center; gap: 8px; }
-        .legend-color { width: 20px; height: 20px; border-radius: 3px; }
-        .months-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-        .month { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc; }
-        .month-title { font-weight: bold; font-size: 14px; text-align: center; color: #1e293b; margin-bottom: 8px; border-bottom: 2px solid #64748b; padding-bottom: 5px; }
-        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 5px; }
-        .weekday { font-size: 11px; font-weight: bold; text-align: center; color: #64748b; padding: 4px 0; }
-        .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border-radius: 3px; color: #1e293b; border: 1px solid #cbd5e1; }
+        body { font-family: Arial, sans-serif; padding: 8px; background: white; }
+        .header { text-align: center; margin-bottom: 8px; }
+        .header h1 { font-size: 18px; color: #1e293b; margin-bottom: 2px; }
+        .header p { font-size: 10px; color: #64748b; margin-bottom: 6px; }
+        .legend { display: flex; gap: 15px; justify-content: center; margin-bottom: 8px; font-size: 9px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+        .months-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .month { border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; background: #f8fafc; }
+        .month-title { font-weight: bold; font-size: 9px; text-align: center; color: #1e293b; margin-bottom: 3px; border-bottom: 1px solid #94a3b8; padding-bottom: 2px; }
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 2px; }
+        .weekday { font-size: 7px; font-weight: bold; text-align: center; color: #64748b; padding: 1px 0; }
+        .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+        .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: bold; border-radius: 2px; color: #1e293b; border: 0.5px solid #cbd5e1; }
         .day.empty { background: white; border: none; }
-        .day.today { font-weight: 900; font-size: 11px; border: 2px solid #1e293b; }
+        .day.today { font-weight: 900; font-size: 8px; border: 1px solid #1e293b; }
       </style>
     </head>
     <body>
@@ -189,15 +189,15 @@ function generateHTML(pattern, baseDate, team, fullName) {
       <div class="legend">
         <div class="legend-item">
           <div class="legend-color" style="background-color: #FCD34D;"></div>
-          <span>Day Shift</span>
+          <span>Day</span>
         </div>
         <div class="legend-item">
           <div class="legend-color" style="background-color: #3B82F6;"></div>
-          <span>Night Shift</span>
+          <span>Night</span>
         </div>
         <div class="legend-item">
           <div class="legend-color" style="background-color: #F472B6;"></div>
-          <span>Rest Day</span>
+          <span>Rest</span>
         </div>
       </div>
 
@@ -207,12 +207,12 @@ function generateHTML(pattern, baseDate, team, fullName) {
   // Generate each month
   for (let month = 0; month < 12; month++) {
     const monthDate = new Date(new Date().getFullYear(), month, 1)
-    const monthName = monthDate.toLocaleString('default', { month: 'long' })
+    const monthName = monthDate.toLocaleString('default', { month: 'short' })
     const daysCount = daysInMonth(monthDate)
     const firstDay = monthDate.getDay()
 
     calendarHTML += `<div class="month"><div class="month-title">${monthName}</div>`
-    calendarHTML += '<div class="weekdays"><div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div><div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div></div>'
+    calendarHTML += '<div class="weekdays"><div class="weekday">S</div><div class="weekday">M</div><div class="weekday">T</div><div class="weekday">W</div><div class="weekday">T</div><div class="weekday">F</div><div class="weekday">S</div></div>'
     calendarHTML += '<div class="days">'
 
     // Empty cells for days before month starts
