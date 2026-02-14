@@ -21,26 +21,34 @@ export default function RosterPrinter({ userTeam, fullName }) {
         return
       }
 
-      // Fetch roster pattern and config - Fixed error handling
+      // Fetch roster pattern
       const patternResult = await supabase
         .from('team_roster_pattern')
         .select('day_index, roster_type, start_time, end_time')
         .eq('team', userTeam)
         .order('day_index', { ascending: true })
 
-      const configResult = await supabase
-        .from('roster_config')
-        .select('base_date')
-        .eq('id', 1)
-        .single()
-
-      // Check for errors separately
       if (patternResult.error) {
         console.error('Pattern error:', patternResult.error)
         setError(`Failed to fetch roster pattern: ${patternResult.error.message}`)
         setGenerating(false)
         return
       }
+
+      const pattern = patternResult.data || []
+
+      if (!pattern || pattern.length === 0) {
+        setError(`No roster pattern found for ${userTeam}. Please check your team assignment.`)
+        setGenerating(false)
+        return
+      }
+
+      // Fetch roster config - Use maybeSingle() instead of single()
+      const configResult = await supabase
+        .from('roster_config')
+        .select('base_date')
+        .eq('id', 1)
+        .maybeSingle()
 
       if (configResult.error) {
         console.error('Config error:', configResult.error)
@@ -49,17 +57,10 @@ export default function RosterPrinter({ userTeam, fullName }) {
         return
       }
 
-      const pattern = patternResult.data || []
       const config = configResult.data
 
-      if (!config) {
-        setError('Roster configuration not found.')
-        setGenerating(false)
-        return
-      }
-
-      if (!pattern || pattern.length === 0) {
-        setError(`No roster pattern found for ${userTeam}. Please check your team assignment.`)
+      if (!config || !config.base_date) {
+        setError('Roster configuration not found. Please contact your administrator.')
         setGenerating(false)
         return
       }
