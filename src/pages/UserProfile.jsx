@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import RosterPrinter from '../components/RosterPrinter'
 
 const TEAMS = ['Team1','Team2','Team3','Team4']
 const BANDS = ['Band A','Band B']
@@ -62,7 +63,7 @@ export default function UserProfile() {
 
     const fixed = normalizeName(fullName)
     if (!isValidName(fixed)) {
-      setError('Name must be in the format “J. Surname” (example: “J. Edwards”).')
+      setError('Name must be in the format "J. Surname" (example: "J. Edwards").')
       return
     }
 
@@ -153,6 +154,11 @@ export default function UserProfile() {
           </div>
         )}
       </div>
+
+      {/* Roster Export Section - Only show for employees after loading */}
+      {!loading && role === 'employee' && (
+        <RosterPrinter userTeam={team} fullName={fullName} />
+      )}
     </div>
   )
 }
